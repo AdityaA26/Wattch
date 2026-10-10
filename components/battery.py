@@ -1,5 +1,7 @@
 import streamlit as st
 
+from data.mock_data import DEMO_SCENARIO
+
 
 def get_battery_plan(
     price_per_kwh,
@@ -41,6 +43,10 @@ def get_battery_plan(
         action = "HOLD"
         message = "GridPilot recommends holding battery power for a future peak or outage."
 
+    if action == "DISCHARGE" and battery_percent <= reserve_percent:
+        action = "HOLD"
+        message = "The battery is at its emergency reserve, so GridPilot will preserve the remaining charge."
+
     power_used_mw = min(max_output_mw, building_demand_mw) if action == "DISCHARGE" else 0
     hourly_savings = power_used_mw * 1000 * max(0, price_per_kwh - low_price)
 
@@ -58,25 +64,45 @@ def render_battery_page():
     st.header("Battery Autopilot")
 
     st.caption(
-        "Demo simulation only — GridPilot recommends actions but preserves emergency backup."
+        "Demo simulation only — GridPilot recommends actions but does not control a real battery. "
+        f"Scenario: {DEMO_SCENARIO['time']} during a {DEMO_SCENARIO['weather'].lower()}."
     )
 
     left, right = st.columns(2)
 
     with left:
-        battery_percent = st.slider("Current battery level (%)", 0, 100, 80)
-        reserve_percent = st.slider("Emergency backup reserve (%)", 10, 80, 20)
-        battery_capacity_mwh = st.slider("Battery capacity (MWh)", 1, 20, 8)
+        battery_percent = st.slider(
+            "Current battery level (%)", 0, 100, DEMO_SCENARIO["battery_percent"]
+        )
+        reserve_percent = st.slider(
+            "Emergency backup reserve (%)",
+            10,
+            80,
+            DEMO_SCENARIO["emergency_reserve_percent"],
+        )
+        battery_capacity_mwh = st.slider(
+            "Battery capacity (MWh)", 1, 20, DEMO_SCENARIO["battery_capacity_mwh"]
+        )
 
     with right:
-        price_per_kwh = st.slider("Current electricity price ($/kWh)", 0.05, 0.50, 0.29)
-        building_demand_mw = st.slider("Building demand (MW)", 1, 15, 10)
-        max_output_mw = st.slider("Maximum battery output (MW)", 1, 5, 2)
+        price_per_kwh = st.slider(
+            "Current electricity price ($/kWh)",
+            0.05,
+            0.50,
+            DEMO_SCENARIO["electricity_price"],
+        )
+        building_demand_mw = st.slider(
+            "Building demand (MW)", 1, 15, DEMO_SCENARIO["building_demand_mw"]
+        )
+        max_output_mw = st.slider(
+            "Maximum battery output (MW)", 1, 5, DEMO_SCENARIO["max_output_mw"]
+        )
 
     st.divider()
 
     grid_event_active = st.toggle(
-        "Grid Event Mode: Heat wave and high grid demand", value=True
+        f"Grid Event Mode: {DEMO_SCENARIO['weather']} and high grid demand",
+        value=DEMO_SCENARIO["grid_event_active"],
     )
 
     manual_override = st.selectbox(
