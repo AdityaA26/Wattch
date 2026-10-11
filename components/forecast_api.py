@@ -70,6 +70,13 @@ class ForecastHandler(BaseHTTPRequestHandler):
         if request.path == "/health":
             self.send_json(200, {"status": "ok", "service": "wattch-forecast-api"})
             return
+        if request.path == "/api/water-updates":
+            try:
+                from components.local_updates import get_water_updates
+                self.send_json(200, get_water_updates())
+            except Exception:
+                self.send_json(503, {"status": "unavailable", "posts": []})
+            return
         if request.path != "/api/forecast":
             self.send_json(404, {"error": "Not found", "paths": ["/health", "/api/forecast"]})
             return
