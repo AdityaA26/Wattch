@@ -7,9 +7,11 @@ import GasPage from './GasPage.jsx';
 import InternetPage from './InternetPage.jsx';
 import WastePage from './WastePage.jsx';
 import DemoPayment from '../components/DemoPayment.jsx';
+import {useHouseholdProfile,getProfiledUtility} from '../../../state/householdProfile.js';
 const detailSections={electricity:ElectricityPage,water:WaterPage,gas:GasPage,internet:InternetPage,waste:WastePage};
 export default function UtilityDetailPage({utilityId,onNavigate,paidBills={},onDemoPay=()=>{}}) {
-  const item=utilityById(utilityId);
+  const profile=useHouseholdProfile();
+  const item=getProfiledUtility(profile,utilityId);
   const [metric,setMetric]=useState('usage');
   if (!item) return <main className="u2-page"><p>Utility not found.</p></main>;
   const Feature=detailSections[item.id];

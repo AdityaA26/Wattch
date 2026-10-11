@@ -1,12 +1,14 @@
 import {useState} from 'react';
 import {money,number} from '../../../data/utilityData.js';
 import {Panel,SectionTitle,RangeControl,Note,ActionLink,Segments} from '../components/UtilityUI.jsx';
+import {useHouseholdProfile} from '../../../state/householdProfile.js';
 const tabs=[{id:'usage',label:'Electric usage'},{id:'costs',label:'Costs'},{id:'peak',label:'Peak hours'},{id:'battery',label:'Home battery'},{id:'breaker',label:'Circuit breaker'},{id:'solar',label:'Solar'}];
 const defaultCircuits=[{name:'Air conditioning',kw:3.4,on:true},{name:'Kitchen appliances',kw:1.6,on:true},{name:'Water heater',kw:2.8,on:true},{name:'Lighting',kw:.55,on:true},{name:'EV charger',kw:7.2,on:false},{name:'Laundry',kw:1.4,on:false}];
 export default function ElectricityPage({item,onNavigate}){
+ const profile=useHouseholdProfile();
  const [tab,setTab]=useState('usage'); const [kwh,setKwh]=useState(item.usage);
- const [soc,setSoc]=useState(56),[reserve,setReserve]=useState(30),[batteryKwh,setBatteryKwh]=useState(13.5);
- const [circuits,setCircuits]=useState(defaultCircuits); const [solarKw,setSolarKw]=useState(5),[sunHours,setSunHours]=useState(4);
+ const [soc,setSoc]=useState(profile.startingSocPct),[reserve,setReserve]=useState(profile.backupReservePct),[batteryKwh,setBatteryKwh]=useState(profile.batteryCapacityKwh);
+ const [circuits,setCircuits]=useState(defaultCircuits); const [solarKw,setSolarKw]=useState(profile.solarCapacityKw),[sunHours,setSunHours]=useState(4);
  const estimatedBill=item.monthly-item.billBreakdown[0][1]+kwh*(item.billBreakdown[0][1]/item.usage);
  const activeLoad=circuits.filter(x=>x.on).reduce((n,x)=>n+x.kw,0);
  const solarMonthly=solarKw*sunHours*30*.8;

@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildForecast, formatHour, WEATHER_SCENARIOS } from './forecastEngine';
 import './forecastLive.css';
+import {useHouseholdProfile} from '../../state/householdProfile.js';
+import {useVacationMode} from '../../state/vacationMode.js';
 
 // Wattch / Weather — a feature page only. Person 1 owns the app shell/sidebar.
 // Live inputs: Open-Meteo and NWS, served by components.forecast_api on /api/forecast.
@@ -119,9 +121,12 @@ function TrendChart({ data, metric, selected, onSelect }) {
 }
 
 export default function ForecastLivePage() {
+  const profile=useHouseholdProfile();
   const [mode, setMode] = useState('live');
-  const [reserve, setReserve] = useState(30);
+  const [reserve, setReserve] = useState(profile.backupReservePct);
   const [appliedReserve, setAppliedReserve] = useState(30);
+  const vacation = useVacationMode();
+  const vacationReserve = vacation.status === 'active' ? Math.max(appliedReserve, vacation.plan.reservePct) : appliedReserve;
   const [selected, setSelected] = useState(0);
   const [metric, setMetric] = useState('price');
   const [refreshCount, setRefreshCount] = useState(0);
@@ -131,19 +136,20 @@ export default function ForecastLivePage() {
   const [loadedTime, setLoadedTime] = useState(null);
   const [expanded, setExpanded] = useState(false);
 
+  useEffect(()=>setReserve(profile.backupReservePct),[profile.backupReservePct]);
   // Debounce reserve edits to avoid sending a live API request for every slider pixel.
   useEffect(() => { const id = setTimeout(() => setAppliedReserve(reserve), 360); return () => clearTimeout(id); }, [reserve]);
   useEffect(() => {
     if (mode !== 'live') return;
     const controller = new AbortController();
     setLoading(true); setError('');
-    fetch(`/api/forecast?backup_reserve_pct=${appliedReserve}`, { signal: controller.signal })
+    fetch(`/api/forecast?${new URLSearchParams({backup_reserve_pct:String(vacationReserve),battery_capacity_kwh:String(profile.batteryCapacityKwh),starting_soc_pct:String(profile.startingSocPct),solar_capacity_kw:String(profile.solarCapacityKw),base_load_kw:String(Math.max(0.1,profile.monthlyElectricKwh/720 * (vacation.status === 'active' ? vacation.plan.awayUsagePct / 100 : 1))),max_battery_power_kw:String(profile.maxBatteryPowerKw),latitude:String(profile.latitude),longitude:String(profile.longitude),timezone:profile.timezone})}`, { signal: controller.signal })
       .then(async (response) => { if (!response.ok) throw new Error(`API returned ${response.status}`); return response.json(); })
       .then((result) => { if (!Array.isArray(result.hours) || result.hours.length !== 24) throw new Error('API forecast has an invalid format'); if (!controller.signal.aborted) { setApiData(result); setLoadedTime(new Date()); setSelected(0); } })
       .catch((reason) => { if (!controller.signal.aborted) { setError(reason.message || 'Backend unavailable'); setApiData(null); } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [mode, appliedReserve, refreshCount]);
+  }, [mode, vacationReserve, vacation.status, vacation.plan.awayUsagePct, refreshCount, profile.batteryCapacityKwh, profile.startingSocPct, profile.solarCapacityKw, profile.monthlyElectricKwh, profile.maxBatteryPowerKw, profile.latitude, profile.longitude, profile.timezone]);
 
   const apiReady = mode === 'live' && !!apiData && !error;
   const demoScenario = mode === 'live' ? 'clear' : mode;
@@ -158,7 +164,7 @@ export default function ForecastLivePage() {
   const hasNwsAlerts = nwsAlerts.length > 0;
   const elevated = apiReady ? apiData.weather_risk === 'elevated' : mode === 'storm';
   const riskLabel = elevated ? 'Elevated' : hasNwsAlerts ? 'Advisory active' : 'Good';
-  const effectiveReserve = apiReady ? numeric(apiData.effective_backup_reserve_pct, reserve) : Math.max(reserve, mode === 'storm' ? 50 : reserve);
+  const effectiveReserve = Math.max(vacation.status === 'active' ? vacation.plan.reservePct : 0, apiReady ? numeric(apiData.effective_backup_reserve_pct, reserve) : Math.max(reserve, mode === 'storm' ? 50 : reserve));
   const weatherCode = apiReady ? spot.weatherCode : mode === 'storm' ? 95 : mode === 'cloudy' ? 3 : 0;
   const condition = apiReady ? weatherCondition(weatherCode) : WEATHER_SCENARIOS[demoScenario].condition;
   const tempF = apiReady ? Math.round(spot.tempC * 9 / 5 + 32) : WEATHER_SCENARIOS[demoScenario].temperature;
@@ -191,7 +197,7 @@ export default function ForecastLivePage() {
       <div className="ww-hero-grid">
         <section className="ww-hero">
           <div className="ww-hero-decoration" aria-hidden="true"/>
-          <div className="ww-hero-top"><span className="ww-inverse-label">COLUMBIA, SOUTH CAROLINA</span><span className="ww-hero-source"><span className="ww-live-dot"/>{currentStatus}</span></div>
+          <div className="ww-hero-top"><span className="ww-inverse-label">{profile.city.toUpperCase()}, {profile.state.toUpperCase()}</span><span className="ww-hero-source"><span className="ww-live-dot"/>{currentStatus}</span></div>
           <div className="ww-hero-content"><div className="ww-hero-icon"><WeatherIcon code={weatherCode} size={47}/></div><div><div className="ww-hero-temp">{tempF}°<span>F</span></div><div className="ww-hero-condition">{condition}</div></div></div>
           <div className="ww-hero-bottom">
             <div><small>Rain chance</small><strong>{spot.precipPct.toFixed(0)}%</strong></div>

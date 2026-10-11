@@ -3,6 +3,11 @@ import ForecastLivePage from '../features/forecast/ForecastLivePage.jsx';
 import './wattchApp.css';
 import { UTILITIES } from '../data/utilityData.js';
 import { HomePage, UtilityOverviewPage, UtilityDetailPage, ConnectUtilityPage } from '../features/utilities/UtilityPages.jsx';
+import HouseholdProfilePage from '../features/profile/HouseholdProfilePage.jsx';
+import {useHouseholdProfile,useHouseholds,selectHousehold,addHousehold} from '../state/householdProfile.js';
+import EquipmentPage from '../features/profile/EquipmentPage.jsx';
+import VacationPage, { VacationSummaryStrip } from '../features/vacation/VacationPage.jsx';
+import { useVacationMode, toggleVacationMode, calculateVacation } from '../state/vacationMode.js';
 
 // One shared app shell: sidebar, topbar, and navigable pages.
 // The Weather feature keeps its own page and existing live API connection.
@@ -11,9 +16,10 @@ const MAIN_PAGES = [
   { id: 'utilities', label: 'Utilities', icon: 'grid' },
   { id: 'insights', label: 'Insights', icon: 'sparkle' },
   { id: 'weather', label: 'Weather', icon: 'cloud' },
+  { id: 'equipment', label: 'My equipment', icon: 'bolt' },
 ];
 const UTILITY_PAGES = UTILITIES;
-const ALL_IDS = new Set([...MAIN_PAGES, ...UTILITY_PAGES, { id: 'connect' }, { id: 'settings' }].map((p) => p.id));
+const ALL_IDS = new Set([...MAIN_PAGES, ...UTILITY_PAGES, { id: 'connect' }, { id: 'settings' }, { id: 'vacation' }].map((p) => p.id));
 function pageFromHash() {
   const id = decodeURIComponent(window.location.hash.slice(2));
   return ALL_IDS.has(id) ? id : 'home';
@@ -62,28 +68,41 @@ function FuturePage({ page, onNavigate }) {
 }
 
 export default function WattchApp() {
+  const profile = useHouseholdProfile();
+  const households=useHouseholds();
+  const [propertyOpen,setPropertyOpen]=useState(false);
+  const [propertyMessage,setPropertyMessage]=useState('');
   const [active, setActive] = useState(pageFromHash);
-  const [paidBills,setPaidBills]=useState(()=>{
-    try {return JSON.parse(window.localStorage.getItem('wattch-demo-payments-v1')||'{}')} catch {return {}}
+  const [paymentsByHome,setPaymentsByHome]=useState(()=>{
+    try{const stored=JSON.parse(window.localStorage.getItem('wattch-demo-payments-by-home-v1')||'null');
+      if(stored&&typeof stored==='object')return stored;
+      const legacy=JSON.parse(window.localStorage.getItem('wattch-demo-payments-v1')||'{}');
+      return {'home-default':legacy};
+    }catch{return {}}
   });
-  const onDemoPay=(id)=>setPaidBills(prev=>{
-    const next={...prev,[id]:true};
-    try{window.localStorage.setItem('wattch-demo-payments-v1',JSON.stringify(next))}catch{}
+  const paidBills=paymentsByHome[households.activeHomeId]||{};
+  const onDemoPay=(id)=>setPaymentsByHome(prev=>{
+    const next={...prev,[households.activeHomeId]:{...(prev[households.activeHomeId]||{}),[id]:true}};
+    try{window.localStorage.setItem('wattch-demo-payments-by-home-v1',JSON.stringify(next))}catch{}
     return next;
   });
+  const chooseHome=(id)=>{selectHousehold(id);setPropertyOpen(false);setPropertyMessage('');};
+  const createHome=()=>{try{addHousehold();setPropertyOpen(false);navigate('settings');setPropertyMessage('');}catch(e){setPropertyMessage(e.message)}};
   useEffect(() => { const sync = () => setActive(pageFromHash()); window.addEventListener('hashchange', sync); return () => window.removeEventListener('hashchange', sync); }, []);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [vacationPreview, setVacationPreview] = useState(false);
-  const navigate = (id) => { if (!ALL_IDS.has(id)) return; window.location.hash = `/${id}`; setActive(id); setMobileOpen(false); setSearchOpen(false); setSearch(''); window.scrollTo({top:0,behavior:'auto'}); };
-  const pageOptions = [...MAIN_PAGES,...UTILITY_PAGES,{id:'connect',label:'Connect utility',icon:'plus'},{id:'settings',label:'Settings',icon:'settings'}];
+  const vacation = useVacationMode();
+  const vacationEstimate = calculateVacation(profile, vacation.plan);
+  const navigate = (id) => { if (!ALL_IDS.has(id)) return; window.location.hash = `/${id}`; setActive(id); setMobileOpen(false); setSearchOpen(false); setPropertyOpen(false); setSearch(''); window.scrollTo({top:0,behavior:'auto'}); };
+  const pageOptions = [...MAIN_PAGES,...UTILITY_PAGES,{id:'connect',label:'Connect utility',icon:'plus'},{id:'settings',label:'Settings',icon:'settings'},{id:'vacation',label:'Vacation Mode',icon:'leaf'}];
   const searchItems = pageOptions.filter((item) => item.label.toLowerCase().includes(search.trim().toLowerCase()));
   return <div className="wapp-root">
     {mobileOpen && <button type="button" className="wapp-scrim" onClick={() => setMobileOpen(false)} aria-label="Close navigation"/>}
     <aside className={`wapp-sidebar ${mobileOpen ? 'wapp-sidebar-open' : ''}`} aria-label="Main navigation">
       <div className="wapp-brand"><span className="wapp-brand-mark"><Icon name="leaf" size={16}/></span><span>WATTCH</span><button type="button" className="wapp-mobile-close" onClick={() => setMobileOpen(false)} aria-label="Close menu"><Icon name="close" size={18}/></button></div>
-      <div className="wapp-property"><span className="wapp-property-icon"><Icon name="home" size={17}/></span><span><strong>Beach House</strong><small>Columbia, South Carolina</small></span><Icon name="chevron" size={15}/></div>
+      <div className="wapp-property-wrap"><button type="button" className="wapp-property" aria-expanded={propertyOpen} aria-label="Choose household" onClick={()=>setPropertyOpen(v=>!v)}><span className="wapp-property-icon"><Icon name="home" size={17}/></span><span><strong>{profile.homeName}</strong><small>{profile.city}, {profile.state}</small></span><Icon name="chevron" size={15}/></button>
+      {propertyOpen&&<div className="wapp-house-menu"><span className="wapp-house-menu-label">YOUR HOMES</span>{households.homes.map(h=><button key={h.id} type="button" onClick={()=>chooseHome(h.id)} className={h.id===households.activeHomeId?'selected':''}><Icon name="home" size={15}/><span><b>{h.profile.homeName}</b><small>{h.profile.city}, {h.profile.state}</small></span>{h.id===households.activeHomeId&&<Icon name="check" size={15}/>}</button>)}<div className="wapp-house-menu-footer"><button type="button" onClick={createHome}><Icon name="plus" size={15}/> Add another home</button><button type="button" onClick={()=>navigate('settings')}><Icon name="settings" size={15}/> Manage homes</button></div>{propertyMessage&&<small className="wapp-property-error">{propertyMessage}</small>}</div>}</div>
       <nav className="wapp-nav" aria-label="Pages">
         {MAIN_PAGES.map((item) => <button key={item.id} type="button" className={`wapp-nav-link ${active === item.id ? 'wapp-is-active' : ''}`} aria-current={active === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}><Icon name={item.icon} size={16}/><span>{item.label}</span></button>)}
       </nav>
@@ -93,20 +112,30 @@ export default function WattchApp() {
         <button type="button" className={`wapp-connect ${active === 'connect' ? 'wapp-utility-active' : ''}`} onClick={() => navigate('connect')}><Icon name="plus" size={15}/>Connect utility</button>
       </nav>
       <div className="wapp-sidebar-bottom">
-        <div className="wapp-vacation"><div className="wapp-vacation-top"><span className="wapp-vacation-symbol"><Icon name="leaf" size={14}/></span><button type="button" role="switch" aria-checked={vacationPreview} className={`wapp-switch ${vacationPreview ? 'wapp-switch-on' : ''}`} onClick={() => setVacationPreview(!vacationPreview)} aria-label="Preview vacation mode"><span/></button></div><strong>Vacation mode</strong><small>{vacationPreview ? 'Preview enabled — no devices are controlled.' : 'Plan energy use while you’re away.'}</small></div>
+
+        <div className="wapp-vacation">
+          <div className="wapp-vacation-top"><span className="wapp-vacation-symbol"><Icon name="leaf" size={14}/></span>
+            <button type="button" role="switch" aria-checked={vacation.plan.enabled && ['active','scheduled'].includes(vacation.status)}
+              className={`wapp-switch ${vacation.plan.enabled && ['active','scheduled'].includes(vacation.status) ? 'wapp-switch-on' : ''}`}
+              onClick={() => { try { toggleVacationMode(!(vacation.plan.enabled && ['active','scheduled'].includes(vacation.status))); } catch (e) { window.alert(e.message); } }}
+              aria-label="Toggle simulated Vacation Mode"><span/></button></div>
+          <strong>Vacation mode</strong>
+          <small>{vacation.status === 'active' ? `${vacationEstimate.protectedReservePct}% reserve · ${vacationEstimate.avoidedKwh.toFixed(0)} kWh less energy (demo)` : vacation.status === 'scheduled' ? `Scheduled for ${vacation.plan.startDate}` : 'Plan energy use while you’re away.'}</small>
+          <button type="button" className="wapp-vacation-plan" onClick={() => navigate('vacation')}>Plan trip →</button>
+        </div>
         <button className={`wapp-settings ${active === 'settings' ? 'wapp-settings-active' : ''}`} onClick={() => navigate('settings')} type="button"><Icon name="settings" size={16}/>Settings</button>
       </div>
     </aside>
     <div className="wapp-workspace">
       <header className="wapp-topbar">
-        <div className="wapp-topbar-left"><button type="button" className="wapp-mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Icon name="menu" size={20}/></button><span className="wapp-weather-mini"><Icon name="sun" size={16}/> Columbia, SC <span className="wapp-separator">·</span> Energy planning</span></div>
+        <div className="wapp-topbar-left"><button type="button" className="wapp-mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Icon name="menu" size={20}/></button><span className="wapp-weather-mini"><Icon name="sun" size={16}/> {profile.city}, {profile.state} <span className="wapp-separator">·</span> Energy planning</span></div>
         <div className="wapp-topbar-right">
           {searchOpen && <div className="wapp-search-popover"><input aria-label="Search Wattch pages" value={search} onChange={e=>setSearch(e.target.value)} autoFocus placeholder="Find a page..."/><div className="wapp-search-results">{searchItems.length ? searchItems.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}><Icon name={item.icon} size={15}/>{item.label}</button>) : <p>No matching pages</p>}</div></div>}
           <button type="button" className="wapp-top-icon" aria-label="Search pages" aria-expanded={searchOpen} onClick={() => {setSearchOpen(x=>!x);setSearch('')}}><Icon name="search" size={17}/></button>
-          <div className="wapp-profile"><span className="wapp-avatar">WD</span><span><strong>Wattch demo</strong><small>Preview workspace</small></span></div>
+          <div className="wapp-profile"><span className="wapp-avatar">{profile.homeName.slice(0,2).toUpperCase()}</span><span><strong>{profile.homeName}</strong><small>Demo household</small></span></div>
         </div>
       </header>
-      <div className="wapp-view" id="wattch-main">{active === 'weather' ? <ForecastLivePage/> : active === 'home' ? <HomePage onNavigate={navigate} paidBills={paidBills}/> : active === 'utilities' ? <UtilityOverviewPage onNavigate={navigate}/> : UTILITY_PAGES.some(item=>item.id===active) ? <UtilityDetailPage key={active} utilityId={active} onNavigate={navigate} paidBills={paidBills} onDemoPay={onDemoPay}/> : active === 'connect' ? <ConnectUtilityPage onNavigate={navigate}/> : <FuturePage page={active} onNavigate={navigate}/>}</div>
+      <div className="wapp-view" id="wattch-main">{active !== 'vacation' && <VacationSummaryStrip onNavigate={navigate}/>} {active === 'vacation' ? <VacationPage key={households.activeHomeId} onNavigate={navigate}/> : active === 'weather' ? <ForecastLivePage key={households.activeHomeId}/> : active === 'home' ? <HomePage key={households.activeHomeId} onNavigate={navigate} paidBills={paidBills}/> : active === 'utilities' ? <UtilityOverviewPage key={households.activeHomeId} onNavigate={navigate}/> : UTILITY_PAGES.some(item=>item.id===active) ? <UtilityDetailPage key={`${households.activeHomeId}-${active}`} utilityId={active} onNavigate={navigate} paidBills={paidBills} onDemoPay={onDemoPay}/> : active === 'connect' ? <ConnectUtilityPage onNavigate={navigate}/> : active === 'settings' ? <HouseholdProfilePage onNavigate={navigate}/> : active === 'equipment' ? <EquipmentPage onNavigate={navigate}/> : <FuturePage page={active} onNavigate={navigate}/>}</div>
     </div>
   </div>;
 }
