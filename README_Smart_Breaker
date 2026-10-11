@@ -1,0 +1,114 @@
+Got you — normal format:
+
+Wattch Smart Breaker Hardware Design
+
+> The current project is a low-voltage Wokwi simulation. It does not connect to a real house panel or replace certified breakers.
+
+Wattch is an ESP32 smart-breaker prototype that models home energy use, battery charging, solar power, Vacation Mode, and overload protection.
+
+1. Sense — What is measured?
+
+| Measurement | Current prototype | Proposed real hardware |
+|---|---|---|
+| Home power demand | Load potentiometer | SCT-013 non-invasive current transformer on the main feed |
+| Solar generation | Slide potentiometer | Solar inverter telemetry through Modbus/RS-485 |
+| Battery level | Simulated battery percentage | Battery-management-system or inverter telemetry |
+| Vacation Mode / reset | GPIO switch and button | Low-voltage switch and reset button |
+| Circuit state | Virtual relay modules | Contactor auxiliary-state feedback |
+
+The proposed current sensor would connect through an ADS1115 16-bit ADC using I²C. It can sample up to 860 times per second, which is enough for a demo-scale RMS energy estimate. [ADS1115 documentation](https://www.ti.com/product/ADS1115)
+
+Real overload and short-circuit protection would still come from certified circuit breakers. Wattch would monitor energy and manage nonessential loads; it would not replace electrical safety equipment.
+
+2. Interface — How does it connect?
+
+| Part | Interface | Purpose |
+|---|---|---|
+| Energy OLED | I²C | Shows energy source, solar input, battery, and load |
+| Circuit OLED | I²C | Shows Vacation Mode, breaker state, and circuit status |
+| Load and solar controls | ESP32 ADC | Simulated energy inputs |
+| Vacation switch / reset button | GPIO | Local controls |
+| LEDs, buzzer, and relays | GPIO | Warning, status, and circuit simulation |
+| Current transformer | Analog → ADS1115 → I²C | Proposed home-load monitoring |
+| Solar inverter / battery BMS | RS-485 / Modbus | Proposed energy telemetry |
+| Certified contactor controller | Opto-isolated low-voltage output | Proposed nonessential-load control |
+
+The ESP32 supports Wi‑Fi, Bluetooth, GPIO, I²C, UART, and ADC inputs, so it works well as the local controller. [ESP32 documentation](https://documentation.espressif.com/esp32_datasheet_en.html)
+
+3. Compute — Where does it think?
+
+The ESP32 runs the current local control logic:
+
+- Tracks simulated load, solar power, battery charge, and grid use.
+- Updates both OLED displays.
+- Uses cheap overnight grid power to charge the battery.
+- Uses solar first during the day.
+- Charges the battery with extra solar.
+- Uses the battery during expensive or low-solar times.
+- Uses normal grid power as the final fallback.
+- Enables Vacation Mode.
+- Trips when simulated current exceeds 15 amps.
+- Requires a manual reset after the load becomes safe.
+
+For deployment, a Raspberry Pi 5 running QNX would act as the Wattch edge gateway. It would receive ESP32 telemetry through MQTT, store local energy history, coordinate schedules, and serve the Wattch dashboard on the local network.
+
+QNX has a Raspberry Pi 5 Quick Start Target Image, making it a realistic proposed gateway for Wattch. [QNX Raspberry Pi guide](https://qnx.com/developers/docs/qnxeverywhere/com.qnx.doc.target_images/topic/qsti/intro.html)
+
+4. Connect — How does data move?
+
+```text
+Current sensor → ADS1115 ADC → ESP32 Smart Breaker
+Solar inverter / battery BMS → RS-485 Modbus → ESP32 Smart Breaker
+Vacation switch / reset button → GPIO → ESP32 Smart Breaker
+
+ESP32 → I²C → Energy OLED
+ESP32 → I²C → Circuit OLED
+ESP32 → GPIO → LEDs, buzzer, relay drivers
+
+ESP32 → Wi-Fi + MQTT → Raspberry Pi 5 running QNX
+Raspberry Pi 5 → Local HTTPS → Wattch Home dashboard
+Raspberry Pi 5 → Optional encrypted cloud sync → Analytics
+```
+
+If Wi‑Fi or the gateway fails, the ESP32 still keeps local breaker logic, displays, Vacation Mode, and manual controls working.
+
+Bill of Materials
+
+| Item | One-unit estimate | 100-unit estimate | Purpose |
+|---|---:|---:|---|
+| ESP32 controller board | $10 | $6 | Local controller |
+| Raspberry Pi 5, power, cooling, storage | $90 | $65 | QNX edge gateway |
+| SCT-013 current transformer + safe conditioning | $18 | $10 | Main-load measurement |
+| ADS1115 ADC breakout | $10 | $6 | Current-sensor reading |
+| Isolated RS-485 interface | $15 | $8 | Solar/BMS telemetry |
+| Opto-isolated relay/control board | $20 | $10 | Low-voltage circuit control |
+| Enclosure, terminals, low-voltage power supply | $70 | $35 | Safe mounting |
+| **Controller subtotal** | **~$233** | **~$140** | Excludes panel work |
+| Certified contactors, listed breakers, and professional installation | $300–$800+ | $200–$500+ | Required for real deployment |
+
+Failure Plan
+
+| Failure | Safe behavior |
+|---|---|
+| Wi‑Fi or gateway disconnects | ESP32 continues local controls and energy rules |
+| Bad sensor data | Mark data invalid and avoid automatic battery decisions |
+| Battery data is stale | Do not assume battery is available; use grid fallback |
+| Gateway restarts | ESP32 continues operating while gateway reconnects |
+| Relay failure | Report mismatch through contactor feedback |
+| Overload | Existing certified breaker stays primary protection; Wattch sheds nonessential loads |
+| Power loss | Electrical protection remains independent; controller restarts safely |
+
+Demo Data Flow
+
+The Wokwi simulation feeds data through the real ESP32 control logic:
+
+- The round potentiometer simulates household demand.
+- The slide potentiometer simulates solar-panel output.
+- The virtual clock starts during cheap overnight charging hours.
+- Vacation Mode turns off AC/Eco, water-heater, and outlet circuits.
+- Fridge/freezer, Wi‑Fi/security, and lights stay active.
+- Raising simulated load above 15 amps trips the controller.
+- The red LED and buzzer activate.
+- Nonessential circuits shut down.
+- Lowering load does not restore power by itself.
+- A manual reset restores normal operation.
