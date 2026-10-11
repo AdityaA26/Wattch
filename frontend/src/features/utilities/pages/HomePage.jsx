@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {MONTHS, UTILITIES, utilityTotal, monthlyTotals, money, number, percent} from '../../../data/utilityData.js';
 import {PageHead, DemoBadge, SectionTitle, Panel, UtilityCard, TrendChart, Segments, ActionLink, Icon} from '../components/UtilityUI.jsx';
 import {useHouseholdProfile,getProfiledUtilities} from '../../../state/householdProfile.js';
+import {EnergyHomeStatus} from '../../energy/EnergyOptimizationPage.jsx';
 
 export default function HomePage({onNavigate,paidBills={}}){
   const profile=useHouseholdProfile();
@@ -29,7 +30,7 @@ export default function HomePage({onNavigate,paidBills={}}){
     </div>
     <div className="u2-home-lower u2-last-row">
       <Panel><SectionTitle title="Where your money goes" detail="Breakdown of the example monthly total"/><div className="u2-split-track" aria-label="Utility spending breakdown">{utilities.map(item=><span key={item.id} style={{width:`${item.monthly/total*100}%`,background:item.color}} title={`${item.label}: ${money(item.monthly)}`}/>)}</div><div className="u2-split-list">{utilities.map(item=><div key={item.id}><span className="u2-dot" style={{background:item.color}}/>{item.label}<strong>{percent(item.monthly,total)}%</strong></div>)}</div></Panel>
-      <Panel className="u2-weather-teaser"><span className="u2-eyebrow">FORECAST & RESILIENCE</span><h2>Plan for tomorrow.</h2><p>Get real weather advisories, estimated solar energy, and modeled times to charge your battery.</p><ActionLink onClick={()=>onNavigate('weather')}>Open live Weather</ActionLink></Panel>
+      <EnergyHomeStatus onNavigate={onNavigate}/>
     </div>
   </main>;
 }

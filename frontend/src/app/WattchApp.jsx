@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import ForecastLivePage from '../features/forecast/ForecastLivePage.jsx';
+import EnergyOptimizationPage from '../features/energy/EnergyOptimizationPage.jsx';
 import './wattchApp.css';
 import { UTILITIES } from '../data/utilityData.js';
 import { HomePage, UtilityOverviewPage, UtilityDetailPage, ConnectUtilityPage } from '../features/utilities/UtilityPages.jsx';
@@ -10,19 +10,19 @@ import VacationPage, { VacationSummaryStrip } from '../features/vacation/Vacatio
 import { useVacationMode, toggleVacationMode, calculateVacation } from '../state/vacationMode.js';
 
 // One shared app shell: sidebar, topbar, and navigable pages.
-// The Weather feature keeps its own page and existing live API connection.
+// Energy Optimization owns the former Weather route; the live forecast stays inside Resilience.
 const MAIN_PAGES = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'utilities', label: 'Utilities', icon: 'grid' },
   { id: 'insights', label: 'Insights', icon: 'sparkle' },
-  { id: 'weather', label: 'Weather', icon: 'cloud' },
+  { id: 'energy', label: 'Energy Optimization', icon: 'sun' },
   { id: 'equipment', label: 'My equipment', icon: 'bolt' },
 ];
 const UTILITY_PAGES = UTILITIES;
 const ALL_IDS = new Set([...MAIN_PAGES, ...UTILITY_PAGES, { id: 'connect' }, { id: 'settings' }, { id: 'vacation' }].map((p) => p.id));
 function pageFromHash() {
   const id = decodeURIComponent(window.location.hash.slice(2));
-  return ALL_IDS.has(id) ? id : 'home';
+  return id === 'weather' ? 'energy' : ALL_IDS.has(id) ? id : 'home';
 }
 
 function Icon({ name, size = 17 }) {
@@ -94,7 +94,7 @@ export default function WattchApp() {
   const [search, setSearch] = useState('');
   const vacation = useVacationMode();
   const vacationEstimate = calculateVacation(profile, vacation.plan);
-  const navigate = (id) => { if (!ALL_IDS.has(id)) return; window.location.hash = `/${id}`; setActive(id); setMobileOpen(false); setSearchOpen(false); setPropertyOpen(false); setSearch(''); window.scrollTo({top:0,behavior:'auto'}); };
+  const navigate = (id) => { if (id === 'weather') id = 'energy'; if (!ALL_IDS.has(id)) return; window.location.hash = `/${id}`; setActive(id); setMobileOpen(false); setSearchOpen(false); setPropertyOpen(false); setSearch(''); window.scrollTo({top:0,behavior:'auto'}); };
   const pageOptions = [...MAIN_PAGES,...UTILITY_PAGES,{id:'connect',label:'Connect utility',icon:'plus'},{id:'settings',label:'Settings',icon:'settings'},{id:'vacation',label:'Vacation Mode',icon:'leaf'}];
   const searchItems = pageOptions.filter((item) => item.label.toLowerCase().includes(search.trim().toLowerCase()));
   return <div className="wapp-root">
@@ -135,7 +135,7 @@ export default function WattchApp() {
           <div className="wapp-profile"><span className="wapp-avatar">{profile.homeName.slice(0,2).toUpperCase()}</span><span><strong>{profile.homeName}</strong><small>Demo household</small></span></div>
         </div>
       </header>
-      <div className="wapp-view" id="wattch-main">{active !== 'vacation' && <VacationSummaryStrip onNavigate={navigate}/>} {active === 'vacation' ? <VacationPage key={households.activeHomeId} onNavigate={navigate}/> : active === 'weather' ? <ForecastLivePage key={households.activeHomeId}/> : active === 'home' ? <HomePage key={households.activeHomeId} onNavigate={navigate} paidBills={paidBills}/> : active === 'utilities' ? <UtilityOverviewPage key={households.activeHomeId} onNavigate={navigate}/> : UTILITY_PAGES.some(item=>item.id===active) ? <UtilityDetailPage key={`${households.activeHomeId}-${active}`} utilityId={active} onNavigate={navigate} paidBills={paidBills} onDemoPay={onDemoPay}/> : active === 'connect' ? <ConnectUtilityPage onNavigate={navigate}/> : active === 'settings' ? <HouseholdProfilePage onNavigate={navigate}/> : active === 'equipment' ? <EquipmentPage onNavigate={navigate}/> : <FuturePage page={active} onNavigate={navigate}/>}</div>
+      <div className="wapp-view" id="wattch-main">{active !== 'vacation' && <VacationSummaryStrip onNavigate={navigate}/>} {active === 'vacation' ? <VacationPage key={households.activeHomeId} onNavigate={navigate}/> : active === 'energy' ? <EnergyOptimizationPage key={households.activeHomeId} onNavigate={navigate}/> : active === 'home' ? <HomePage key={households.activeHomeId} onNavigate={navigate} paidBills={paidBills}/> : active === 'utilities' ? <UtilityOverviewPage key={households.activeHomeId} onNavigate={navigate}/> : UTILITY_PAGES.some(item=>item.id===active) ? <UtilityDetailPage key={`${households.activeHomeId}-${active}`} utilityId={active} onNavigate={navigate} paidBills={paidBills} onDemoPay={onDemoPay}/> : active === 'connect' ? <ConnectUtilityPage onNavigate={navigate}/> : active === 'settings' ? <HouseholdProfilePage onNavigate={navigate}/> : active === 'equipment' ? <EquipmentPage onNavigate={navigate}/> : <FuturePage page={active} onNavigate={navigate}/>}</div>
     </div>
   </div>;
 }

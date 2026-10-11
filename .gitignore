@@ -12,3 +12,4 @@ dist/
 !.env.example
 Wattch_*.zip
 *.log
+.DS_Store

@@ -44,7 +44,7 @@ export default function HouseholdProfilePage({onNavigate}){
     if(!String(draft.homeName||'').trim() || !String(draft.city||'').trim()){setNotice('Enter a household name and a city.');return;}
     if(!Number.isFinite(Number(draft.latitude))||!Number.isFinite(Number(draft.longitude))||Number(draft.latitude)<-90||Number(draft.latitude)>90||Number(draft.longitude)<-180||Number(draft.longitude)>180){setNotice('Enter a valid forecast latitude and longitude.');return;}
     if(Object.entries(draft).some(([key,v])=>typeof DEFAULT_PROFILE[key]==='number' && (v===''||!Number.isFinite(Number(v))))){setNotice('Complete all numeric fields with valid numbers.');return;}
-    try{saveHouseholdProfile(draft);setNotice('Saved! Home, Electricity and Weather now use this demo household configuration.');}
+    try{saveHouseholdProfile(draft);setNotice('Saved! Home, Electricity and Energy now use this demo household configuration.');}
     catch(err){setNotice(err.message)}
   }
   function reset(){if(!window.confirm('Reset the demo home, location and energy settings to their defaults?'))return;try{resetHouseholdProfile();setLocationResults([]);setNotice('Demo household reset to defaults.')}catch(e){setNotice(e.message)}}
@@ -83,7 +83,7 @@ export default function HouseholdProfilePage({onNavigate}){
           <Field label="Forecast longitude"><NumberField draft={draft} setDraft={setDraft} name="longitude" min="-180" max="180" step="0.0001"/></Field>
           <div className="hp-full hp-note">Changing the city or ZIP text alone does not move the weather forecast. Use <strong>Find location</strong> or update latitude and longitude too. Columbia-specific water notices remain Columbia-specific.</div>
         </Section>
-        <Section number="03" title="Energy setup" description="One configuration to inform Electricity, Weather and future Insights.">
+        <Section number="03" title="Energy setup" description="One configuration to inform Electricity, Energy and future Insights.">
           <Field label="Monthly electricity"><NumberField draft={draft} setDraft={setDraft} name="monthlyElectricKwh" min="0" max="20000" step="25" unit="kWh"/></Field>
           <Field label="Household budget"><NumberField draft={draft} setDraft={setDraft} name="monthlyBudgetUsd" min="0" max="100000" step="10" unit="USD/mo"/></Field>
           <Field label="Installed battery capacity"><div className="hp-readonly">{Number(draft.batteryCapacityKwh).toFixed(1)} kWh <small>Managed in My equipment</small></div></Field>
@@ -103,7 +103,7 @@ export default function HouseholdProfilePage({onNavigate}){
         <div className="hp-summary-card"><span>Usable battery energy above reserve</span><strong>{usable.toFixed(1)} kWh</strong><p>Based on starting charge of {soc}% and protected reserve of {reserve}%.</p><div className="hp-meter"><span style={{width:`${Math.max(0,Math.min(100,soc))}%`}}/></div></div>
         <div className="hp-summary-card"><span>Illustrative backup duration</span><strong>{backupHours.toFixed(1)} hours</strong><p>Rough whole-home average demand estimate. Real emergency loads and inverter limits may differ significantly.</p></div>
         <div className="hp-summary-card"><span>Budget target</span><strong>{money(draft.monthlyBudgetUsd)}</strong><p>Used by your Home dashboard budget comparison.</p></div>
-        <div className="hp-summary-links"><button type="button" onClick={()=>onNavigate('electricity')}>Open Electricity ↗</button><button type="button" onClick={()=>onNavigate('weather')}>Open Weather ↗</button></div>
+        <div className="hp-summary-links"><button type="button" onClick={()=>onNavigate('electricity')}>Open Electricity ↗</button><button type="button" onClick={()=>onNavigate('energy')}>Open Energy ↗</button></div>
       </aside>
     </div>
   </main>;
