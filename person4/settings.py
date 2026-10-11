@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-ALLOWED = {"GEMINI_API_KEY", "GEMINI_MODEL", "PORT", "FRONTEND_ORIGIN"}
+ALLOWED = {"GEMINI_API_KEY", "GEMINI_MODEL", "PORT", "FRONTEND_ORIGIN", "DATABASE_URL", "WATTCH_DB_PATH"}
 
 
 def settings():

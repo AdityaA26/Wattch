@@ -1,149 +1,236 @@
-# Wattch — person 4 backend
+# Wattch person 4 backend upgrade
 
-This folder is the complete replacement for the earlier person 4 snippets. It imports no code from components/ and includes no HTML, CSS, JavaScript, frontend, forecast service or battery scheduler.
+Backend only. No React, HTML, CSS, utility login or hardware control is added.
+The package extends your uploaded person4 code and reuses Person 2's forecast modules.
 
-Reviewed against Palmetto Hacks(1).pdf, pages 11–12 and 16. Person 4 owns the Savings Simulator, AI Assistant and Grid Modernization Impact logic. Under your updated team split, person 1 builds the screens, person 2 supplies forecast/tariff/weather/event data, and person 3 supplies battery schedules.
+## Start in Codespaces
 
-## What is included
+Upload Wattch_Backend_Upgrade.zip into the /workspaces/Wattch root (beside README.md).
+Stop any running old backend with Ctrl+C in its terminal. Keep all ports PRIVATE.
 
-- Grid-only, baseline-battery and planned-battery cost comparisons.
-- Same demand, solar, rates and ending battery energy for fair battery comparisons.
-- Supplied wear allowance; negative savings remain visible.
-- Daily differences and monthly/yearly repeat-day projections, with assumptions.
-- Separate labels for simulated, forecast and observed inputs; observations remain unverified.
-- Essential backup runtime, energy and output-power limits, reserve readiness.
-- Grid-event energy avoided; single-asset peak demand.
-- Community coincident peak: add assets at each common hour before finding the peak.
-- Gemini explanations grounded in costs, schedule, reserve, source metadata and assumptions.
-- Labeled local explanations when no key is supplied or a Gemini call fails.
-- HTTP routes, sample JSON, 28 automated tests, and a running-server verification command.
-
-## Install from the zip
-
-Upload Wattch_Person4_Backend.zip into your Codespace repo root (/workspaces/Wattch). Stop the previous server with Ctrl+C. Then:
+Run each block in order from a shell prompt. The archive updates person4 source files
+but contains no .env, database, frontend files or components files. Your saved key stays in place.
+Back up any newer person4 edits before extracting this snapshot-based upgrade.
 
 ```bash
 cd /workspaces/Wattch
-python3 -m zipfile -e Wattch_Person4_Backend.zip .
-python3 -m unittest -v person4.tests
+git fetch origin
+python3 -m zipfile -e Wattch_Backend_Upgrade.zip .
 ```
 
-Python 3.10+ and standard library only. No pip/npm install, account connection or missing teammate code is required. The zip extracts a person4/ folder; source files are separate modules, not one generated installer file. It includes no API key.
-
-## Configure Gemini once
+Reuse these exact Person 2 modules from their branch; no full branch merge is required.
+This updates these three shared files to the fetched forecast branch versions.
+If your team has newer versions elsewhere, agree on those versions instead.
 
 ```bash
-python3 -m person4.configure_key
+git restore --source=origin/feature/forecast -- components/forecast.py components/forecast_api.py components/local_updates.py
+python3 -m person4.prepare_upgrade
+python3 -m unittest -v person4.tests person4.tests_upgrade
 ```
 
-This prints a clear prompt. Paste your authorized Gemini API key and press Enter; characters are hidden. It confirms the save. A blank entry leaves existing configuration alone. The saved file is person4/.env, ignored by person4/.gitignore and restricted to the owner. Never commit or share .env. Saved settings override stale terminal exports. Obtain a key from https://aistudio.google.com/apikey. Setup saves the key; it does not verify a live request.
+Expect 53 passing tests. prepare_upgrade preserves your key, sets port 8000 and
+explicitly selects gemini-2.5-flash. A Gemini project must itself be on the free tier:
+selecting a model cannot disable billing on a paid project. If you have no key yet,
+run python3 -m person4.configure_key, then continue below. Do not paste keys into chat.
 
-Optional configuration may be added to .env, one KEY=value per line:
-
-```
-GEMINI_MODEL=an-available-model-id
-PORT=8080
-FRONTEND_ORIGIN=http://localhost:3000
-```
-
-Leave GEMINI_MODEL absent/blank for automatic discovery of an available text Flash model. FRONTEND_ORIGIN supports exact origins separated by commas, not a wildcard.
-
-## Start and verify
-
-Terminal A:
+First use local SQLite; no dependency installation or cloud signup is needed:
 
 ```bash
-python3 -m person4.api
+python3 -m person4.seed_demo
+python3 -m person4.storage_check
+python3 -m person4.server
 ```
 
-It prints RUNNING, the health URL and whether a key is loaded. Leave this terminal occupied. If port 8080 is busy, stop the previous server with Ctrl+C or put PORT=8081 in person4/.env.
-
-Create Terminal B using the + beside Terminal. Then:
+Leave the server running. Open a SECOND terminal and run:
 
 ```bash
 cd /workspaces/Wattch
-python3 -m person4.check
+python3 -m person4.upgrade_check
+python3 -m person4.upgrade_check --live-weather
 ```
 
-The checker submits a sample plan, gets the community report and asks the assistant a question. It prints PASS for the backend flow. If Gemini is working, it explicitly prints LIVE GEMINI CALL SUCCEEDED. With no key it prints that local fallback works. If a key is loaded but the request fails, it prints CHECK NEEDED and exits with code 2. No frontend is used.
+The first checks persistent history, insights, old savings routes and a real household
+Gemini request. The second also requests live weather/NWS. CHECK NEEDED means a source
+is unavailable; local fallback must not be claimed as a Gemini success.
+Only this new unified server should occupy port 8000. Do not simultaneously run
+components.forecast_api or the old person4.api. The legacy savings endpoints remain
+available on the unified server. The old person4.check honors the configured port,
+but upgrade_check is the main checker now.
 
-GET / returns JSON backend status, so opening the root URL no longer looks like a missing-page error. This is an API status response, not a webpage.
+## Optional Tiger Data trial
 
-## Source files
+Tiger Cloud offers a 30-day trial without a credit card (checked October 10, 2026).
+It is not permanently free cloud hosting. SQLite remains the option if your rule is
+zero paid-service dependency after the hackathon. Use your own Tiger Data account;
+no ChatGPT account connection is required and do not send the connection URI here.
 
-| File | Purpose |
-| --- | --- |
-| calculations.py | Validation, savings, backup, grid and community calculations |
-| assistant.py | Gemini requests and deterministic fallback |
-| api.py | JSON HTTP API |
-| settings.py | Local and environment configuration |
-| configure_key.py | Hidden key prompt and local save |
-| check.py | Verify the running API and real Gemini status |
-| tests.py | Automated unit and HTTP tests; Gemini responses are mocked |
-| fixtures/*.json | Labeled sample data for person 4 testing |
+1. Open https://www.tigerdata.com/pricing and choose the free trial signup.
+2. Create a TimescaleDB service on the available trial plan. Avoid paid upgrades.
+3. In its connection details, copy the PostgreSQL URI, including the database name,
+   username and password. Choose the URI form rather than a full psql command.
+4. Stop the unified server with Ctrl+C, then run:
 
-## API contract for persons 1, 2 and 3
+```bash
+python3 -m pip install -r person4/requirements-tiger.txt
+python3 -m person4.configure_database
+```
 
-| Method | Endpoint | Request |
+Paste ONLY the connection URI at the hidden prompt, then Enter. No characters display.
+The URI is saved in ignored person4/.env. SSL is required by the adapter.
+
+```bash
+python3 -m person4.seed_demo
+python3 -m person4.storage_check
+python3 -m person4.server
+```
+
+Use a second terminal for upgrade_check again. Claim Tiger Data integration only after
+storage_check prints LIVE TIGER DATA CONNECTION and the HTTP health reports tigerdata.
+The adapter creates wattch_readings as a hypertable and executes time_bucket queries
+for reports; it actually stores and queries the project data. It does not silently
+fall back to SQLite when a Tiger connection fails. Changing storage backends does not
+migrate existing histories. Seeding adds/replaces only reserved demo-* histories.
+To switch back, stop the server, rerun configure_database, press Enter on the blank
+prompt, and restart. Your earlier local SQLite data is still there.
+
+## Endpoints for the frontend owner
+
+The frontend is unchanged. Its existing Vite proxy already targets port 8000.
+All these routes now live on one backend. If the browser sends an Origin header,
+add its exact frontend origin to FRONTEND_ORIGIN in person4/.env. Example local origins:
+FRONTEND_ORIGIN=http://localhost:5173,http://127.0.0.1:5173
+For Codespaces use the actual forwarded frontend URL, with no trailing slash.
+CORS does not provide authentication. Keep this service private and use demo data.
+
+| Method | Path | Function |
 | --- | --- | --- |
-| GET | /api/insights/health | None |
-| POST | /api/insights/evaluate | One raw plan in the sample_plan.json format |
-| POST | /api/insights/chat | {"planId":"returned by evaluate","question":"Explain my backup"} |
-| POST | /api/insights/community | {"plans":[raw asset plan, raw asset plan]} |
+| GET | /health | Unified server and database status |
+| GET | /api/forecast | Existing Person 2 format, cached for 10 minutes |
+| GET | /api/water-updates | Existing Columbia Water public RSS reader |
+| GET | /api/insights/health | Existing savings API status |
+| POST | /api/insights/evaluate | Existing validated savings contract |
+| POST | /api/insights/chat | Existing plan-specific Gemini explanation |
+| POST | /api/insights/community | Existing coincident community grid impact |
+| POST | /api/household/profile | Create/update household profile |
+| POST | /api/household/readings | Import validated daily consumption |
+| GET | /api/household/report?householdId=demo-home | History, costs, habits, peers |
+| GET | /api/household/weather?householdId=demo-home | Weather, battery and solar advice |
+| POST | /api/household/chat | Grounded household Gemini explanation |
 
-All responses are JSON. Evaluate returns planId, metrics, comparison, repeatDayProjection, gridImpact, warnings and validated hourly rows. Chat returns answer, provider, model, calculation facts and warning when applicable. Show provider=gemini only for actual successful model responses.
+Profile example (POST body):
 
-Plan IDs are in memory, capped at 100 and reset on restart. Evaluate again after a restart. Bad inputs return 400, unknown plan IDs/routes return 404, unconfigured browser origins return 403.
-
-Person 1 should proxy these routes in the main backend or set FRONTEND_ORIGIN to the frontend's exact browser origin. If the frontend proxy forwards an Origin header, configure that origin too. If the main app uses Python, it can directly import:
-
-```python
-from person4.calculations import evaluate, community_report
-from person4.assistant import explain
-
-report = evaluate(raw_plan_from_person_3)
-answer = explain(report, "Why these savings?")
+```json
+{"householdId":"my-home","occupants":3,"floorAreaSqft":1600,
+ "latitude":34.0007,"longitude":-81.0348,"timezone":"America/New_York",
+ "region":"Columbia-SC","peerOptIn":false,"batteryCapacityKwh":13.5,
+ "startingSocPct":60,"reservePct":20,"essentialLoadKw":0.55,
+ "backupGoalHours":8,"maxBatteryPowerKw":3,"solarCapacityKw":5}
 ```
 
-## Input format
+Reading import example (POST body):
 
-fixtures/sample_plan.json is a full working example; person 3 should adapt its format rather than invent a second schema.
+```json
+{"householdId":"my-home","readings":[
+ {"date":"2026-10-10","utility":"electricity","quantity":24,
+ "unit":"kWh","unitRateUsd":0.18,"source":"observed"}]}
+```
 
-Top-level fields:
+Dates describe complete local calendar days in the household's declared timezone.
+For storage only, a local day's label is encoded as midnight UTC; it is NOT an actual
+meter measurement instant. Imports must be daily consumption amounts, not cumulative
+meter counters. Supported units: kWh, US gallons (gal), therms. Rates are optional.
+Do not upload incomplete current-day totals as complete days. Duplicate dates replace
+previous entries. A mixed observed/simulated 28-day window is not compared.
 
-- assetId: unique name for this supplied battery/home, not proof of a connected device.
-- date: optional YYYY-MM-DD for individual plans, required for community plans.
-- timezone: defaults to America/New_York; valid IANA name.
-- currency: USD.
-- inputType: simulated, forecast or observed. This is team-supplied provenance, not verification.
-- context: optional weatherSummary, forecastSource, tariffSource and eventSource strings, each up to 500 characters. Person 2 supplies these. Missing values say Not supplied.
-- config: capacityKwh, initialSocPct, reservePct, backupHours, essentialLoadKw, maxChargeKw, maxDischargeKw, chargeEfficiency, dischargeEfficiency, wearUsdPerKwh.
-- baseline and schedule: 24 one-hour rows each, ordered by integer hour 0 through 23.
+CSV import after saving the household profile:
 
-Each row requires loadKw, priceUsdPerKwh, gridKw, chargeKw, dischargeKw and storedKwh. solarKw defaults to zero; gridEvent defaults to false and must be a boolean. storedKwh is energy at the END of the hour, starting from capacity × initial SOC. Grid-event hours must match across comparison cases.
+```bash
+python3 -m person4.import_history my-home /path/to/daily-usage.csv
+```
 
-Both battery strategies must respect the required reserve, except an initially low battery may charge toward it; it may not discharge before reserve is restored. Both strategies must end at the same stored energy and restore at least the initial energy or the higher reserve. If reserve requirements change, person 3 regenerates the schedules. Person 4 does not generate or control the dispatch plan.
+Columns: date,utility,quantity,unit,unitRateUsd,source. Example file in fixtures.
+JSON can contain a readings list or {"readings":[...]}. Batch max 1500 records/1 MB.
 
-Community plans must have unique asset IDs and matching date, timezone, inputType and event hours. Up to 20 supplied assets are accepted. Return fields include baselineCoincidentPeakKw, plannedCoincidentPeakKw, plannedKwAtBaselinePeakHour, eventEnergyAvoidedKwh and backupGoalsMetAtEnd. Do not call these assets connected homes unless you have an actual integration.
+Household chat (POST body):
 
-## Assumptions and limits
+```json
+{"householdId":"demo-home","question":"Why did my water costs increase?",
+ "includeWeather":true}
+```
 
-Costs include imported energy and the supplied wear allowance. Fixed charges, demand charges, taxes, incentives and battery purchase costs are excluded. Grid-only has no battery; the two battery cases retain identical ending energy. Monthly/yearly projection repeats one supplied day for 30/365 days, not a seasonal forecast or guarantee. Observed inputs get a separate savingsStatus but remain unverified; uploading observed data does not establish an actual utility bill credit.
+includeWeather defaults false to avoid unnecessary upstream calls. Asking a weather
+question with false does not give Gemini live weather. Use true or retrieve /weather
+first. A combined report supports ?householdId=demo-home&includeWeather=true.
+Every response distinguishes gemini from local_rules and carries its computed evidence.
 
-This is a fixed 24-interval model, with no DST-day adjustment, exports or solar-to-battery charging. Solar offsets demand; surplus is curtailed. Backup assumes constant essential load and excludes inverter standby losses. An essential load above max discharge power cannot be supported during an outage. Event energy shifting does not establish carbon reduction.
+## Analysis and honest limits
 
-The HTTP server is a single-process hackathon service with no user accounts or persistent database. Keep its Codespaces port private. Persistent storage, real telemetry and production hosting belong with the team's shared backend integration.
+- A full comparison needs 28 consecutive daily observations: latest 7 versus previous 21.
+- An increase is flagged only above 30% and 3 baseline standard deviations, with a 10%
+  baseline-mean floor. This is a transparent heuristic, not trained anomaly detection.
+- Costs decompose differences into usage and rates, from supplied linear unit rates.
+  Full bills, fixed fees, tax, sewer formulas and tiered tariffs are not reconciled yet.
+- Peer comparisons require explicit opt-in and at least FIVE other eligible profiles:
+  same region/timezone, occupancy within one person, area within 25%, aligned source/dates.
+  Only aggregate statistics are returned, not peer IDs or individual readings. Household
+  equipment differences and weather normalization are not accounted for yet.
+- Daily data cannot identify overnight continuous flow or confirm an appliance/gas leak.
+- Weather and NWS are reused from Person 2, with cache/source labels and no invented outage
+  probability. Weather failures never turn synthetic solar output into a live estimate.
+- Battery advice uses supplied current SOC/capacity and a constant essential load at 90%
+  efficiency. It checks capacity AND output-power feasibility. No physical control exists.
+- Solar estimates are irradiance based; panel orientation and shading are not calibrated.
+- six demo households and 756 readings are synthetic, not actual neighbors or real meters.
+- This is a private hackathon server: no authentication, accounts, tenant isolation or
+  production deployment yet. Peer queries scan at most 100 profiles; household history
+  reads at most 1500 records. Savings plan IDs still expire on process restart.
 
-## Push only this work
+## Remaining backend work
+
+The existing forecast's rolling 24-hour dispatch is NOT automatically passed into the
+single-calendar-day savings evaluator. It uses different efficiency/terminal-energy
+assumptions and rounded values; do not claim its demo savings are the validated savings.
+Next build one timestamped schedule contract with duration, exact charge/discharge and
+ending energy, then adapt Person 3's battery decisions to it. MW/MWh must convert to
+kW/kWh. Keep the authoritative costs in calculations.py. Hourly usage/leak checks,
+weather-normalized comparisons, full bill parsing and actual utility connections are
+future additions, not implemented by this package. See SAVINGS_CONTRACT.md for the
+unchanged legacy plan schema and fixtures.
+
+## Validation
+
+53 tests pass: 28 original plus 25 upgrade tests. Local child-server checks verified
+persistent SQLite, history reports and existing savings routes. Gemini request shapes,
+weather failure handling and Tiger SQL/adapter behavior are tested with mocks. A live
+Tiger Cloud instance and live household Gemini/weather calls need your credentials /
+network and MUST be verified with the provided commands before claiming success.
+
+## File ownership and commits
+
+All new implementation is under person4. No frontend or Person 3 battery code is edited.
+The three shared forecast files are restored verbatim from Person 2's branch during setup.
+Commit only your backend after successful checks:
 
 ```bash
 git add person4
-git commit --only -m "Complete person 4 savings AI and grid-impact backend" -- person4
+git commit --only -m "Add household insights and optional Tiger Data backend" -- person4
 git push origin feature/insights
 ```
 
-The earlier components/insights.py, insights_api.py, insights_demo.py and insights.html are not dependencies of this version. Hand teammates this folder and README; use person4's commands going forward.
+Do not commit database files, .env, connection URIs or review ZIPs. Coordinate the shared
+forecast file merge with your frontend/forecast teammate; those paths may show separate
+local changes after restore and are intentionally not included in the commit above.
 
-## 30-second demo explanation
+## Sources checked October 10, 2026
 
-Our backend receives the same household demand and tariff for the baseline and planned battery strategies. It checks the energy balance and compares costs while preserving the same ending battery energy, so it cannot manufacture savings by draining the battery. It reports whether essential backup is feasible and how much grid energy is avoided during an event. For multiple supplied homes, it calculates the community peak at common hours. Gemini explains these calculated facts and the forecast sources, with a clear fallback when the API is unavailable.
+- https://www.tigerdata.com/pricing
+- https://docs.snowflake.com/en/user-guide/admin-trial-account
+- https://ai.google.dev/gemini-api/docs/pricing
+- https://www.tigerdata.com/docs/learn/hypertables/creating-and-configuring-hypertables
+- https://open-meteo.com/en/pricing
+- https://www.weather.gov/documentation/services-web-api
+
+Recommendation: optional Tiger Data for genuine utility-history storage plus Gemini
+for explanation. Snowflake adds warehouse/account setup without a necessary role in
+this small operational demo, so it is not included. Trial eligibility is not permanent
+free hosting or a guarantee of sponsor-prize eligibility.

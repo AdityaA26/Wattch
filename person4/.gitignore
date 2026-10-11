@@ -3,3 +3,6 @@
 !.env.example
 __pycache__/
 *.py[cod]
+runtime/
+*.db
+*.db-*
