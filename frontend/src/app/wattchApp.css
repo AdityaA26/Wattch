@@ -1,0 +1,94 @@
+/* Shared Wattch application layout and navigation. */
+:root{color-scheme:light}
+html,body,#root{margin:0;min-height:100%;width:100%}
+body{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f6f7f4;color:#26372c}
+.wapp-root{--wapp-ink:#27392d;--wapp-muted:#8e9a92;--wapp-border:#e8ebe5;min-height:100vh;display:flex;color:var(--wapp-ink);font-size:13px;line-height:1.4}
+.wapp-root *{box-sizing:border-box}
+.wapp-root button,.wapp-root input{font:inherit}
+.wapp-root button{cursor:pointer}
+.wapp-root button:focus-visible,.wapp-root input:focus-visible{outline:2px solid #82a58a;outline-offset:3px}
+.wapp-sidebar{width:220px;flex:0 0 220px;background:#fcfdfb;border-right:1px solid #e9ece6;min-height:100vh;position:sticky;top:0;align-self:flex-start;display:flex;flex-direction:column;padding:21px 12px 12px;z-index:20;height:100vh;overflow-y:auto;scrollbar-width:thin}
+.wapp-brand{height:37px;display:flex;gap:9px;align-items:center;padding:0 11px;color:#26372c;font-size:13px;font-weight:850;letter-spacing:.2px}
+.wapp-brand-mark{display:grid;place-items:center;width:25px;height:25px;border-radius:9px;background:#214b32;color:#e6f0e6;transform:rotate(-4deg)}
+.wapp-property{font:inherit;color:inherit;text-align:left;cursor:pointer;margin:24px 2px 20px;padding:9px 7px;min-height:53px;border:1px solid #eff1eb;border-radius:11px;background:#fff;display:flex;align-items:center;gap:8px;box-shadow:0 2px 6px #253b2310}
+.wapp-property-icon{width:28px;height:28px;flex:0 0 28px;display:grid;place-items:center;color:#638969;background:#f0f5ed;border-radius:9px}
+.wapp-property>span:nth-child(2){min-width:0;flex:1;display:flex;flex-direction:column;gap:1px}
+.wapp-property strong{font-size:10.5px;font-weight:740;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wapp-property small{font-size:8.2px;color:#a4afa6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wapp-property>svg{color:#b1b9b1;flex:0 0 15px}
+.wapp-nav,.wapp-utility-nav{display:flex;flex-direction:column;gap:3px}
+.wapp-nav-link{width:100%;border:0;background:transparent;min-height:35px;border-radius:9px;display:flex;align-items:center;gap:10px;text-align:left;padding:8px 11px;color:#6f8073;font-size:11px!important;font-weight:600;transition:background .16s,color .16s}
+.wapp-nav-link:hover,.wapp-utility-link:hover,.wapp-connect:hover,.wapp-settings:hover{background:#f2f6ef;color:#32513a}
+.wapp-nav-link.wapp-is-active{background:#eaf1e7;color:#2f5639;font-weight:750}
+.wapp-nav-link svg{color:#819486}
+.wapp-is-active svg{color:#527959}
+.wapp-nav-count{background:#e3edcf;color:#78945b;font-size:9px;padding:1px 6px;border-radius:6px;margin-left:auto;font-weight:800}
+.wapp-sidebar-label{font-size:9px;color:#a2aea3;letter-spacing:1px;font-weight:740;margin:26px 9px 11px}
+.wapp-utility-link,.wapp-connect{width:100%;border:0;background:transparent;color:#79877c;display:flex;align-items:center;gap:11px;padding:7px 13px;border-radius:8px;text-align:left;font-size:11px!important;min-height:30px}
+.wapp-utility-dot{width:7px;height:7px;border-radius:100%;flex-shrink:0}
+.wapp-utility-active{background:#f0f5eb;color:#3f654a;font-weight:750}
+.wapp-connect{gap:8px;color:#7b9982}
+.wapp-sidebar-bottom{margin-top:auto;padding-top:22px}
+.wapp-vacation{background:#214c33;border-radius:11px;color:#fff;padding:13px 13px 14px;display:flex;flex-direction:column;gap:4px}
+.wapp-vacation-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.wapp-vacation-symbol{display:grid;place-items:center;width:23px;height:23px;border-radius:7px;background:#ffffff17;color:#c8e7c2}
+.wapp-switch{width:36px;height:19px;border:0;background:#73927b;border-radius:99px;padding:3px;display:flex;align-items:center;justify-content:flex-start}
+.wapp-switch span{background:#fff;border-radius:50%;width:13px;height:13px;display:block;box-shadow:0 1px 2px #1f472c3b;transition:transform .2s}
+.wapp-switch-on{background:#b0d19e}
+.wapp-switch-on span{transform:translateX(17px)}
+.wapp-vacation strong{font-size:10.5px;font-weight:800}
+.wapp-vacation small{font-size:9px;color:#c0d5c2;line-height:1.4}
+.wapp-settings{display:flex;gap:10px;align-items:center;border:0;background:transparent;width:100%;border-radius:8px;margin-top:8px;padding:8px 10px;color:#8b998e;text-align:left;font-size:11px!important}
+.wapp-settings-active{background:#eaf1e7;color:#3e6548}
+.wapp-workspace{flex:1;min-width:0;min-height:100vh;display:flex;flex-direction:column}
+.wapp-topbar{height:56px;flex:0 0 56px;background:#fafcf8;border-bottom:1px solid #e9ece6;display:flex;align-items:center;justify-content:space-between;padding:0 30px;gap:16px}
+.wapp-topbar-left,.wapp-topbar-right,.wapp-weather-mini,.wapp-profile{display:flex;align-items:center;gap:10px}
+.wapp-weather-mini{font-size:10px;color:#91a197;gap:7px}
+.wapp-weather-mini svg{color:#dfb657}
+.wapp-separator{color:#c5cdc5;padding:0 4px}
+.wapp-topbar-right{margin-left:auto;gap:13px;position:relative}
+.wapp-top-icon,.wapp-mobile-menu,.wapp-mobile-close{border:1px solid #ecf0ea;border-radius:9px;background:#fff;display:grid;place-items:center;color:#85978b;width:30px;height:30px}
+.wapp-top-icon:hover,.wapp-mobile-menu:hover{color:#42664a;background:#f1f6ef}
+.wapp-profile{border-left:1px solid #edf0eb;padding-left:12px;gap:9px}
+.wapp-avatar{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;background:#e6efdc;color:#6c8b63;font-size:9px;font-weight:750}
+.wapp-profile>span:nth-of-type(2){display:flex;flex-direction:column;gap:1px}
+.wapp-profile strong{font-size:9.5px;color:#566d5b}
+.wapp-profile small{font-size:8.5px;color:#a9b5aa}
+.wapp-view{flex:1;min-width:0}
+.wapp-view .ww-weather{min-height:calc(100vh - 56px)}
+.wapp-view .ww-weather .ww-shell{max-width:1350px;padding:30px clamp(20px,3.2vw,50px) 25px}
+.wapp-search-popover{position:absolute;right:130px;top:37px;z-index:30;background:#fff;border:1px solid #e4eae2;border-radius:12px;box-shadow:0 18px 40px #233d2830;width:245px;padding:9px}
+.wapp-search-popover input{width:100%;padding:10px 11px;border:1px solid #e0e9df;border-radius:8px;background:#f9faf7;color:#314f39;font-size:11px}
+.wapp-search-results{display:flex;flex-direction:column;gap:3px;max-height:270px;overflow:auto;margin-top:7px}
+.wapp-search-results button{border:0;background:transparent;text-align:left;display:flex;gap:9px;align-items:center;padding:8px;border-radius:7px;color:#68816c;font-size:11px!important}
+.wapp-search-results button:hover{background:#f1f6ef}
+.wapp-search-results p{font-size:11px;color:#a3aca4;margin:10px}
+.wapp-placeholder{max-width:1260px;margin:auto;padding:38px clamp(22px,4vw,58px);width:100%}
+.wapp-crumb{font-size:10px;letter-spacing:1.5px;font-weight:800;color:#7b9783}
+.wapp-crumb span{color:#d0d8cd;padding:0 9px}
+.wapp-placeholder-head{margin-top:21px}
+.wapp-placeholder-head h1{font-size:clamp(27px,3vw,39px);line-height:1.2;letter-spacing:-1.4px;margin:0;color:#25362c}
+.wapp-placeholder-head>p{font-size:13px;color:#8c9a90;margin:11px 0 0}
+.wapp-empty-card{min-height:286px;background:#fff;border:1px solid #e8ece6;border-radius:17px;margin-top:29px;padding:29px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:12px;box-shadow:0 4px 15px #355b3a09}
+.wapp-empty-icon{width:46px;height:46px;display:grid;place-items:center;color:#507455;background:#eaf2e8;border-radius:12px}
+.wapp-eyebrow{font-size:10px;font-weight:800;letter-spacing:1.2px;color:#95a598;margin-top:7px}
+.wapp-empty-card h2{font-size:23px;letter-spacing:-.6px;margin:0}
+.wapp-empty-card>p{font-size:12px;line-height:1.65;color:#819084;margin:0;max-width:530px}
+.wapp-empty-card>button{border:1px solid #e1e8df;background:#f5f9f3;border-radius:8px;display:flex;align-items:center;gap:9px;padding:10px 13px;color:#3e6448;margin-top:10px;font-size:12px!important;font-weight:700}
+.wapp-empty-card>button:hover{background:#ebf3e8}
+.wapp-utility-overview{margin-top:32px}
+.wapp-section-title h2{font-size:17px;margin:0}
+.wapp-section-title p{font-size:12px;margin:6px 0 14px;color:#98a399}
+.wapp-utility-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px}
+.wapp-utility-tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:12px;text-align:left;min-height:170px;padding:19px;border-radius:13px;border:1px solid #e6ebe5;background:#fff;color:#253d2c}
+.wapp-utility-tile:hover{border-color:#b2cbb5;transform:translateY(-1px);transition:transform .15s}
+.wapp-tile-icon{display:grid;place-items:center;width:35px;height:35px;border-radius:10px}
+.wapp-utility-tile strong{font-size:12px}
+.wapp-utility-tile small{font-size:10px;color:#9aa69c;line-height:1.45;max-width:180px}
+.wapp-tile-arrow{position:absolute;right:16px;top:21px;color:#a5b3a8}
+.wapp-mobile-menu,.wapp-mobile-close,.wapp-scrim{display:none}
+@media(max-width:1100px){.wapp-sidebar{width:198px;flex-basis:198px;padding-left:9px;padding-right:9px}.wapp-topbar{padding:0 20px}.wapp-view .ww-weather .ww-shell{padding-left:23px;padding-right:23px}}
+@media(max-width:760px){.wapp-sidebar{position:fixed;transform:translateX(-103%);transition:transform .2s ease;box-shadow:16px 0 35px #243e2b16;height:100dvh}.wapp-sidebar-open{transform:translateX(0)}.wapp-mobile-menu,.wapp-mobile-close{display:grid}.wapp-mobile-close{margin-left:auto;width:27px;height:27px}.wapp-scrim{display:block;position:fixed;inset:0;z-index:19;border:0;background:#11251573}.wapp-topbar{padding:0 17px}.wapp-weather-mini{font-size:9.5px}.wapp-profile>span:nth-of-type(2){display:none}.wapp-profile{padding-left:8px}.wapp-search-popover{right:52px;width:min(265px,calc(100vw - 90px))}.wapp-view .ww-weather .ww-shell{padding-left:16px;padding-right:16px}.wapp-placeholder{padding:25px 17px}}
+
+/* Per-household selector: scoped to app shell; overlays do not affect content pages. */
+.wapp-property-wrap{position:relative;margin:24px 2px 20px}.wapp-property-wrap .wapp-property{margin:0;width:100%}.wapp-house-menu{position:absolute;top:calc(100% + 7px);left:0;width:min(285px,calc(100vw - 26px));z-index:35;padding:10px;background:#fff;border:1px solid #dfe8dc;border-radius:12px;box-shadow:0 14px 38px rgba(37,61,41,.19)}.wapp-house-menu-label{font-size:9px;letter-spacing:1.2px;color:#91a498;font-weight:800;display:block;padding:6px 7px 8px}.wapp-house-menu>button,.wapp-house-menu-footer button{display:flex;align-items:center;gap:9px;text-align:left;width:100%;border:0;background:#fff;color:#42664a;border-radius:8px;padding:10px;cursor:pointer;font-size:11px}.wapp-house-menu>button:hover,.wapp-house-menu-footer button:hover,.wapp-house-menu>button.selected{background:#eef5ec}.wapp-house-menu>button span{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px}.wapp-house-menu>button b{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wapp-house-menu>button small{font-size:9px;color:#8a9c8e}.wapp-house-menu-footer{border-top:1px solid #ecf0eb;margin-top:7px;padding-top:6px}.wapp-property-error{display:block;color:#a9665c;font-size:10px;padding:9px}

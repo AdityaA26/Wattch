@@ -1,0 +1,27 @@
+import {useState} from 'react';
+import {PageHead,DemoBadge,Panel,SectionTitle,ActionLink} from '../utilities/components/UtilityUI.jsx';
+import {useHouseholds,selectHousehold,addHousehold} from '../../state/householdProfile.js';
+import {useHouseholdAccess,changeAccountOwner,addHouseholdMember,removeHouseholdMember,changeHouseholdRole} from '../../state/householdAccess.js';
+import './management.css';
+export default function AccountPage({onNavigate}){
+ const households=useHouseholds(),access=useHouseholdAccess();
+ const home=households.homes.find(h=>h.id===households.activeHomeId)||households.homes[0];
+ const members=access.membersByHome[home.id]||[];
+ const [ownerName,setOwnerName]=useState(access.owner.name),[ownerEmail,setOwnerEmail]=useState(access.owner.email);
+ const [newName,setNewName]=useState(''),[newEmail,setNewEmail]=useState(''),[newRole,setNewRole]=useState('Member');
+ const [message,setMessage]=useState('');
+ const submitOwner=e=>{e.preventDefault();try{changeAccountOwner(ownerName,ownerEmail);setMessage('Account display details saved in this browser.')}catch(err){setMessage(err.message)}};
+ const invite=e=>{e.preventDefault();try{addHouseholdMember(home.id,newName,newEmail,newRole);setNewName('');setNewEmail('');setMessage('Sample member added. No email sent or access granted.')}catch(err){setMessage(err.message)}};
+ const create=()=>{try{addHousehold();setMessage('Demo building added.')}catch(err){setMessage(err.message)}};
+ return <main className="u2-page mg-page"><PageHead crumb="ACCOUNT" title="Your account & households" subtitle="Manage demo properties, members and equipment from one place."/><DemoBadge/>
+ <div className="mg-banner">Account names, member roles and invites are <strong>browser-only previews</strong>. No user login, invitation email, or enforced permissions exist yet.</div>
+ <div className="mg-layout">
+ <Panel><SectionTitle title="Account profile" detail="This name determines the initials in your top-right avatar."/>
+ <form className="mg-form" onSubmit={submitOwner}><label>Display name<input maxLength={60} value={ownerName} onChange={e=>setOwnerName(e.target.value)} required/></label><label>Contact email (example only)<input type="email" value={ownerEmail} onChange={e=>setOwnerEmail(e.target.value)} required/></label><button type="submit" className="mg-primary">Save profile</button></form></Panel>
+ <Panel><div className="mg-head-inline"><SectionTitle title="Your homes & buildings" detail="Switch among up to eight demo properties."/><button className="mg-outline" onClick={create} type="button">+ Add property</button></div><div className="mg-home-list">{households.homes.map(h=><button type="button" key={h.id} onClick={()=>{selectHousehold(h.id);setMessage('Property switched.')}} className={h.id===home.id?'mg-home-selected':''}><span><strong>{h.profile.homeName}</strong><small>{h.profile.city}, {h.profile.state} · {h.profile.occupants} occupants</small></span><b>{h.id===home.id?'CURRENT':'Select →'}</b></button>)}</div><ActionLink onClick={()=>onNavigate('settings')}>Edit property profiles</ActionLink></Panel>
+ </div>
+ <div className="mg-layout">
+ <Panel><div className="mg-head-inline"><SectionTitle title={`People at ${home.profile.homeName}`} detail="View and organize sample roles for this home."/><span className="mg-tag">{members.length+1} listed</span></div><div className="mg-member-list"><div className="mg-member"><span className="mg-person">{access.owner.name.slice(0,2).toUpperCase()}</span><span><strong>{access.owner.name}</strong><small>{access.owner.email}</small></span><b>Owner · demo</b></div>{members.map(m=><div key={m.id} className="mg-member"><span className="mg-person">{m.name.slice(0,2).toUpperCase()}</span><span><strong>{m.name}</strong><small>{m.email} · invitation not sent</small></span><select aria-label={`Demo role for ${m.name}`} value={m.role} onChange={e=>changeHouseholdRole(home.id,m.id,e.target.value)}><option>Manager</option><option>Member</option><option>Viewer</option></select><button className="mg-remove" type="button" onClick={()=>removeHouseholdMember(home.id,m.id)} aria-label={`Remove ${m.name}`}>Remove</button></div>)}</div><form className="mg-form mg-invite" onSubmit={invite}><label>Member name<input value={newName} maxLength={60} onChange={e=>setNewName(e.target.value)} placeholder="e.g., Taylor" required/></label><label>Email<input type="email" value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder="person@example.com" required/></label><label>Demo role<select value={newRole} onChange={e=>setNewRole(e.target.value)}><option>Member</option><option>Manager</option><option>Viewer</option></select></label><button className="mg-primary" type="submit">Add sample member</button></form></Panel>
+ <Panel><SectionTitle title={`Equipment at ${home.profile.homeName}`} detail="Shows the equipment inventory linked to the selected household."/><div className="mg-device-list">{home.equipment.map(device=><div key={device.id}><span><strong>{device.name}</strong><small>{device.type} · {device.status==='owned'?'listed as owned':'planned'} · simulated connection</small></span><b>{device.rating} {device.type==='breaker'?'circuits':device.type==='battery'?'kWh':'kW'}</b></div>)}</div><ActionLink onClick={()=>onNavigate('equipment')}>Manage household equipment</ActionLink></Panel>
+ </div>{message&&<p role="status" className="mg-message">{message}</p>}</main>;
+}
