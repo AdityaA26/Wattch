@@ -1,38 +1,19 @@
 import {useState} from 'react';
-import {MONTHS, UTILITIES, utilityTotal, monthlyTotals, money, number, percent} from '../../../data/utilityData.js';
-import {PageHead, DemoBadge, SectionTitle, Panel, UtilityCard, TrendChart, Segments, ActionLink, Icon} from '../components/UtilityUI.jsx';
+import {money,percent} from '../../../data/utilityData.js';
+import {PageHead,SectionTitle,Panel,UtilityCard,TrendChart,Segments,ActionLink} from '../components/UtilityUI.jsx';
 import {useHouseholdProfile,getProfiledUtilities} from '../../../state/householdProfile.js';
+import {useHouseholdData} from '../../../state/householdData.jsx';
 import BillsForecastSummary from '../../management/BillsForecastSummary.jsx';
 import HomeEnergySnapshot from '../../management/HomeEnergySnapshot.jsx';
-import {EnergyHomeStatus} from '../../energy/EnergyOptimizationPage.jsx';
 
 export default function HomePage({onNavigate,paidBills={}}){
-  const profile=useHouseholdProfile();
-  const utilities=getProfiledUtilities(profile);
-  const [windowSize,setWindowSize]=useState(6);
-  const total=utilities.reduce((sum,item)=>sum+item.monthly,0);
-  const series=MONTHS.map((_,i)=>Number(utilities.reduce((sum,item)=>sum+item.trend[i],0).toFixed(2)));
-  const shown=series.slice(-windowSize);
-  const labels=MONTHS.slice(-windowSize);
-  const budget=profile.monthlyBudgetUsd;
-  const used=percent(total,budget);
-  return <main className="u2-page">
-    <PageHead crumb="HOME" title="Your home, in one place." subtitle={`Utility costs for ${profile.homeName} · ${profile.city}, ${profile.state}`} action={<span className="u2-period-pill"><Icon name="calendar" size={15}/> October · sample period</span>}/>
-    <DemoBadge/>
-    <div className="u2-home-lead">
-      <section className="u2-home-hero"><span className="u2-eyebrow">TOTAL HOUSEHOLD OPERATING COST</span><strong>{money(total)}</strong><p>Illustrative total for October</p><div className="u2-hero-stats"><div><span>Compared with May</span><b>{money(total-series[0])}</b></div><div><span>Example monthly budget</span><b>{money(budget)}</b></div><div><span>Budget remaining</span><b>{money(Math.max(0,budget-total))}</b></div></div></section>
-      <Panel className="u2-home-health"><div className="u2-panel-title"><div><span className="u2-eyebrow u2-eyebrow-muted">HOUSEHOLD SNAPSHOT</span><h2>Accounts not connected</h2><p>All five utilities currently use demo readings.</p></div><span className="u2-health-icon"><Icon name="shield" size={26}/></span></div><div className="u2-home-health-note"><Icon name="info" size={18}/><span>Start with the interactive utility pages. Real account linking can come later.</span></div><ActionLink onClick={()=>onNavigate('connect')}>Explore account connection</ActionLink></Panel>
-    </div>
-    <HomeEnergySnapshot profile={profile} onNavigate={onNavigate}/>
-    <SectionTitle title="Your utilities" detail="Five example services, one dashboard" action={<ActionLink onClick={()=>onNavigate('utilities')}>View all</ActionLink>}/>
-    <div className="u2-utility-grid">{utilities.map(item=><UtilityCard key={item.id} item={item} onNavigate={onNavigate}/>)}</div>
-    <div className="u2-home-lower">
-      <Panel><div className="u2-panel-title"><div><h2>Household spending trend</h2><p>Combined utility costs over time · example values</p></div><Segments ariaLabel="Spending trend period" items={[{value:3,label:'3 months'},{value:6,label:'6 months'}]} value={windowSize} onChange={setWindowSize}/></div><TrendChart key={windowSize} values={shown} months={labels}/></Panel>
-      <BillsForecastSummary utilities={utilities} paidBills={paidBills} onNavigate={onNavigate}/>
-    </div>
-    <div className="u2-home-lower u2-last-row">
-      <Panel><SectionTitle title="Where your money goes" detail="Breakdown of the example monthly total"/><div className="u2-split-track" aria-label="Utility spending breakdown">{utilities.map(item=><span key={item.id} style={{width:`${item.monthly/total*100}%`,background:item.color}} title={`${item.label}: ${money(item.monthly)}`}/>)}</div><div className="u2-split-list">{utilities.map(item=><div key={item.id}><span className="u2-dot" style={{background:item.color}}/>{item.label}<strong>{percent(item.monthly,total)}%</strong></div>)}</div></Panel>
-      <EnergyHomeStatus onNavigate={onNavigate}/>
-    </div>
-  </main>;
+ const profile=useHouseholdProfile(),shared=useHouseholdData(),utilities=getProfiledUtilities(profile);
+ const [windowSize,setWindowSize]=useState(6);
+ const complete=utilities.every(u=>u.monthly!=null),total=complete?utilities.reduce((n,u)=>n+u.monthly,0):null;
+ const series=Array.from({length:6},(_,i)=>utilities.every(u=>u.trend[i]!=null)?utilities.reduce((n,u)=>n+u.trend[i],0):null);
+ const labels=utilities.find(u=>u.months)?.months||['May','Jun','Jul','Aug','Sep','Oct'];
+ const showTrend=series.slice(-windowSize).every(n=>n!=null);
+ const flags=shared.data.report.utilities.filter(u=>u.status==='possible_unusual_increase');
+ const weatherStatus=shared.energy?.weather?.weather.status;
+ return <main className="u2-page"><PageHead crumb="HOME" title={profile.homeName} subtitle={profile.city+', '+profile.state+' · saved household data'} action={<span className="u2-period-pill">Last 30 saved days</span>}/><div className="u2-home-lead"><section className="u2-home-hero"><span className="u2-eyebrow">HOUSEHOLD COST ESTIMATE</span><strong>{money(total)}</strong><p>Last 30 saved days + sample service charges</p><div className="u2-hero-stats"><div><span>Budget target</span><b>{money(profile.monthlyBudgetUsd)}</b></div><div><span>{total!=null&&total>profile.monthlyBudgetUsd?'Over budget':'Budget remaining'}</span><b>{total==null?'Unavailable':money(Math.abs(profile.monthlyBudgetUsd-total))}</b></div><div><span>Utilities</span><b>5 services</b></div></div></section><Panel className="u2-home-health"><SectionTitle title="Check these first" detail="Actionable signals for this household"/><div className="wp-home-alerts">{flags.map(u=><button type="button" key={u.utility} onClick={()=>onNavigate('insights/usage')}><span className="wp-alert-dot"/><span><b>{u.utility[0].toUpperCase()+u.utility.slice(1)} use increased</b><small>{u.changePct.toFixed(1)}% above the preceding 21-day average</small></span><span>→</span></button>)}<button type="button" onClick={()=>onNavigate('insights/weather')}><span className={'wp-alert-dot '+(weatherStatus==='no_elevated_signal_detected'?'wp-dot-green':'')}/><span><b>{weatherStatus==='elevated_weather_risk'?'Review weather precautions':weatherStatus==='live_data_incomplete'?'Check official weather alerts':weatherStatus?'Weather and preparedness':'Weather check in progress'}</b><small>{weatherStatus==='live_data_incomplete'?'A live feed is unavailable; risk is unknown.':'Review conditions for your saved location.'}</small></span><span>→</span></button></div></Panel></div><HomeEnergySnapshot onNavigate={onNavigate}/><SectionTitle title="Your utilities" detail="Bills and Insights use the same saved readings" action={<ActionLink onClick={()=>onNavigate('utilities')}>All bills</ActionLink>}/><div className="u2-utility-grid">{utilities.map(item=><UtilityCard key={item.id} item={item} onNavigate={onNavigate}/>)}</div><div className="u2-home-lower"><Panel><div className="u2-panel-title"><div><h2>Household cost history</h2><p>30-day reading windows and sample service fees</p></div><Segments ariaLabel="Spending trend period" items={[{value:3,label:'3 periods'},{value:6,label:'6 periods'}]} value={windowSize} onChange={setWindowSize}/></div>{showTrend?<TrendChart key={windowSize} values={series.slice(-windowSize)} months={labels.slice(-windowSize)}/>:<p className="wp-empty">Saved daily readings and supplied unit rates are needed for {windowSize} complete billing windows. Missing history is not estimated as zero.</p>}</Panel><BillsForecastSummary utilities={utilities} paidBills={paidBills} onNavigate={onNavigate}/></div></main>;
 }

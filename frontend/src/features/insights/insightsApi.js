@@ -22,11 +22,11 @@ export function backendProfile(profile, id) {
     householdId: homeId(id), occupants: profile.occupants,
     floorAreaSqft: profile.squareFeet, latitude: profile.latitude,
     longitude: profile.longitude, timezone: profile.timezone,
-    region: `${profile.city}, ${profile.state}`.slice(0, 80), peerOptIn: false,
+    region: `${profile.city}, ${profile.state}`.slice(0, 80), peerOptIn: profile.peerOptIn===true,
     batteryCapacityKwh: Math.max(.01, profile.batteryCapacityKwh),
     startingSocPct: profile.startingSocPct, reservePct: profile.backupReservePct,
     maxBatteryPowerKw: profile.maxBatteryPowerKw, solarCapacityKw: profile.solarCapacityKw,
-    essentialLoadKw: .55, backupGoalHours: 8,
+    essentialLoadKw: profile.essentialLoadKw ?? .55, backupGoalHours: profile.backupGoalHours ?? 8,
   };
 }
 

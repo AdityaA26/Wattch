@@ -17,7 +17,7 @@ export function VacationSummaryStrip({onNavigate}) {
   return <div className="vac-banner" role="status">
     <span className="vac-banner-icon" aria-hidden="true">✦</span>
     <div><strong>Vacation plan {status === 'scheduled'?'scheduled':'active'} · {profile.homeName}</strong>
-      <small>{prettyDate(plan.startDate)}–{prettyDate(plan.endDate)} · {rounded(r.avoidedKwh)} kWh less grid demand (modeled) · {r.protectedReservePct}% backup target</small></div>
+      <small>{prettyDate(plan.startDate)}–{prettyDate(plan.endDate)} · {rounded(r.avoidedKwh)} kWh less household use (modeled) · {r.protectedReservePct}% backup target</small></div>
     <button type="button" onClick={()=>onNavigate('vacation')}>Manage plan <span aria-hidden="true">→</span></button>
   </div>;
 }
@@ -42,17 +42,17 @@ export default function VacationPage({onNavigate}) {
   function quickWeek(){setDraft(previous=>({...previous,startDate:today,endDate:addDays(today,6)}));}
   return <main className="vac-page">
     <div className="vac-breadcrumb">YOUR HOME <span>/</span> VACATION MODE</div>
-    <div className="vac-heading"><div><h1>Make time away work for you.</h1><p>Plan lower household electricity use and preserve backup power while you're away.</p></div>
+    <div className="vac-heading"><div><h1>Vacation plan</h1><p>Plan lower household electricity use and preserve backup power while you're away.</p></div>
       <button type="button" className="vac-text-button" onClick={()=>onNavigate('settings')}>Home settings ↗</button></div>
     <div className="vac-intro-grid">
       <div className="vac-hero"><div className="vac-hero-top"><span>VACATION MODE</span><span className="vac-status">{statusLabels[status]}</span></div><h2>{profile.homeName}</h2><p>{plan.enabled ? `Current plan: ${prettyDate(plan.startDate)} – ${prettyDate(plan.endDate)}` : 'Schedule your next trip and see what your home could save.'}</p><div className="vac-hero-foot"><div><span>Protected battery target</span><strong>{stats.protectedReservePct}%</strong></div><div><span>Expected usage while away</span><strong>{draft.awayUsagePct}%</strong></div></div></div>
-      <div className="vac-intro-card"><span className="vac-overline">YOUR PROJECTED SAVINGS</span><strong>{usd(stats.estimatedSavings)}</strong><p>Estimated variable electricity savings across {stats.days} day{stats.days===1?'':'s'}</p><div className="vac-progress"><span style={{width:`${stats.baselineKwh ? 100*stats.avoidedKwh/stats.baselineKwh : 0}%`}}/></div><small>Based on your demo electricity profile and a {Math.round(draft.assumedRate*100)}¢/kWh example rate.</small></div>
+      <div className="vac-intro-card"><span className="vac-overline">YOUR PROJECTED SAVINGS</span><strong>{usd(stats.estimatedSavings)}</strong><p>Estimated variable electricity savings across {stats.days} day{stats.days===1?'':'s'}</p><div className="vac-progress"><span style={{width:`${stats.baselineKwh ? 100*stats.avoidedKwh/stats.baselineKwh : 0}%`}}/></div><small>Based on your saved electricity history and a {Math.round(draft.assumedRate*100)}¢/kWh example rate.</small></div>
     </div>
     <div className="vac-stats">
       <div><span>Baseline usage</span><strong>{rounded(stats.baselineKwh)} kWh</strong><small>At-home estimate</small></div>
       <div><span>Vacation usage</span><strong>{rounded(stats.projectedKwh)} kWh</strong><small>Essential + modeled away loads</small></div>
       <div><span>Modeled energy avoided</span><strong>{rounded(stats.avoidedKwh)} kWh</strong><small>Projected load reduction, not metered</small></div>
-      <div><span>Backup runtime</span><strong>{rounded(stats.backupHours)} hours</strong><small>Protected energy at {draft.criticalLoadKw} kW critical load</small></div>
+      <div><span>Backup runtime</span><strong>{rounded(stats.backupHours)} hours</strong><small>Protected energy at {profile.essentialLoadKw} kW essential load · 90% efficiency</small></div>
     </div>
     <form onSubmit={save} className="vac-layout">
       <section className="vac-card"><div className="vac-card-head"><span className="vac-label">01 / YOUR TRIP</span><h2>Travel schedule</h2><p>Wattch only runs this as a household simulation.</p></div>
@@ -73,8 +73,7 @@ export default function VacationPage({onNavigate}) {
         <input id="vac-reserve" className="vac-slider" type="range" min="20" max="90" step="5" value={draft.reservePct} onChange={e=>set('reservePct',Number(e.target.value))}/>
         <div className="vac-range-labels"><span>20%</span><span>90%</span></div>
         <div className="vac-protection"><span>▣</span><p><strong>{stats.protectedReservePct}% effective backup target</strong><small>Never below the {profile.backupReservePct}% minimum set for this home. Actual available charge may be lower.</small></p></div>
-        <div className="vac-slider-title"><label htmlFor="vac-critical">Essential backup load (kW)</label><strong>{draft.criticalLoadKw.toFixed(1)} kW</strong></div>
-        <input id="vac-critical" className="vac-slider" type="range" min="0.1" max="3" step="0.1" value={draft.criticalLoadKw} onChange={e=>set('criticalLoadKw',Number(e.target.value))}/>
+        <p className="vac-helper">Essential load: {profile.essentialLoadKw} kW, shared with the household backup goal. Edit this in Home settings.</p>
         <div className="vac-slider-title"><label htmlFor="vac-return">Pre-return recovery</label><strong>{draft.preReturnHours} hours</strong></div>
         <input id="vac-return" className="vac-slider" type="range" min="0" max="12" step="1" value={draft.preReturnHours} onChange={e=>set('preReturnHours',Number(e.target.value))}/>
         <small className="vac-helper">Models a gradual return to normal electricity consumption before you arrive.</small>

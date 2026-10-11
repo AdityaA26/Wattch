@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {Panel,SectionTitle,Segments,Note} from '../utilities/components/UtilityUI.jsx';
 import {money} from '../../data/utilityData.js';
 import {useHouseholds,useHouseholdProfile} from '../../state/householdProfile.js';
+import {useHouseholdData} from '../../state/householdData.jsx';
 import {useServicePreferences,saveServicePreferences} from '../../state/servicePreferences.js';
 import {billPrediction,downloadReport} from '../../data/usageAnalytics.js';
 import './management.css';
@@ -13,7 +14,8 @@ export default function InternetServicePage({item}){
  const provider=current.provider||'Spectrum',equipmentFee=Number(current.equipmentFee??10),promoDate=current.promoDate||'',billReminder=current.billReminder||'';
  const selected=PLANS.find(p=>p.id===plan),projection=billPrediction(item);
  const write=patch=>saveServicePreferences(activeHomeId,'internet',patch);
- const criticalLoadKw=.08;const aboveReserveKwh=Math.max(0,profile.batteryCapacityKwh*(profile.startingSocPct-profile.backupReservePct)/100);const routerRuntime=aboveReserveKwh/criticalLoadKw;
+ const shared=useHouseholdData();const protectedReserve=shared.energy?.plan?.metrics.reservePct??Math.max(profile.backupReservePct,Math.min(100,profile.backupGoalHours*profile.essentialLoadKw/.9/profile.batteryCapacityKwh*100));
+ const criticalLoadKw=.08;const aboveReserveKwh=Math.max(0,profile.batteryCapacityKwh*(profile.startingSocPct-protectedReserve)/100);const routerRuntime=aboveReserveKwh*.9/criticalLoadKw;
  const hasPromo=promoDate && !Number.isNaN(Date.parse(promoDate));
  const daysLeft=hasPromo?Math.ceil((new Date(`${promoDate}T00:00:00`)-new Date())/86400000):null;
  return <div className="u3-stack"><div className="mg-layout">
@@ -25,7 +27,7 @@ export default function InternetServicePage({item}){
  </Panel>
  <Panel><SectionTitle title="Compare example plans" detail="These are hypothetical offers, not advertised provider rates"/><Segments items={PLANS.map(p=>({value:p.id,label:p.label}))} value={plan} onChange={setPlan} ariaLabel="Example plan tier"/><div className="mg-bill-summary"><div><small>Example speed</small><strong>{selected.speed}</strong></div><div><small>Plan + equipment</small><strong>{money(selected.monthly+equipmentFee)}</strong></div></div><label className="mg-check"><input type="checkbox" checked={cable} onChange={e=>setCable(e.target.checked)}/> I pay for cable channels I rarely watch</label>{cable&&<div className="mg-insight-alert"><strong>Consider reviewing your cable package</strong><p>You indicated you rarely watch some channels. Check whether removing or downgrading cable saves money.</p></div>}<Note title="Router not connected">Online/offline status, live upload/download activity, connected devices, unknown-device alerts and Wi-Fi signal are unavailable without an authorized router integration.</Note></Panel>
  </div>
- <Panel><SectionTitle title="Storm & internet continuity" detail="Battery-powered connectivity is possible when your equipment has a compatible backup circuit"/><div className="mg-insight-alert"><strong>Illustrative modem + router + phone charging backup: {routerRuntime.toFixed(1)} hours</strong><p>Assumes 80 watts continuously and only battery energy above your saved emergency reserve. Actual uptime depends on grid outages, ISP infrastructure, wiring and equipment.</p></div><p className="mg-sample-desc">Live outage detection and connected-device lists require authorized ISP or router access; weather advisories do not guarantee an internet outage.</p></Panel>
+ <Panel><SectionTitle title="Storm & internet continuity" detail="Battery-powered connectivity is possible when your equipment has a compatible backup circuit"/><div className="mg-insight-alert"><strong>Illustrative modem + router + phone charging backup: {routerRuntime.toFixed(1)} hours</strong><p>Assumes 80 watts continuously and 90% discharge efficiency and only battery energy above the required protected reserve. Actual uptime depends on grid outages, ISP infrastructure, wiring and equipment.</p></div><p className="mg-sample-desc">Live outage detection and connected-device lists require authorized ISP or router access; weather advisories do not guarantee an internet outage.</p></Panel>
  <Panel><SectionTitle title="Service actions" detail="Open supported external services or adjust local demo settings"/><div className="mg-actions"><a className="mg-outline" href="https://fast.com/" target="_blank" rel="noopener noreferrer">Test internet speed ↗</a><a className="mg-outline" href={SUPPORT[provider]} target="_blank" rel="noopener noreferrer">Check outage / provider ↗</a><button type="button" className="mg-outline" onClick={()=>downloadReport([item])}>View sample bills (CSV) ↓</button><a className="mg-outline" href="https://www.fcc.gov/broadbandlabels" target="_blank" rel="noopener noreferrer">Compare plan terms ↗</a></div><button type="button" className="mg-outline" disabled title="Connect a supported router to unlock device management">Manage devices · requires router</button><p className="mg-sample-desc">Connected devices management is disabled until a supported router is connected. Actual plan prices and provider outages are not verified.</p></Panel>
  </div>;
 }

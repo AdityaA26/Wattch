@@ -57,20 +57,25 @@ def utility_summary(rows, utility, end=None):
     return out
 
 
-def peer_comparison(store, target, utility, summary):
+def peer_comparison(store, target, utility, summary, cache=None):
     if not target["peerOptIn"]:
         return {"status": "not_opted_in"}
     if summary.get("status") in ("no_data", "insufficient_comparable_data"):
         return {"status": "insufficient_data"}
     values = []
-    for peer in store.peer_profiles():
+    cache = {} if cache is None else cache
+    profiles = cache.setdefault("profiles", store.peer_profiles()) if "profiles" not in cache else cache["profiles"]
+    for peer in profiles:
         if peer["householdId"] == target["householdId"] or not peer["peerOptIn"]:
             continue
         if peer["region"] != target["region"] or peer["timezone"] != target["timezone"] or abs(peer["occupants"] - target["occupants"]) > 1:
             continue
         if not .75 <= peer["floorAreaSqft"] / target["floorAreaSqft"] <= 1.25:
             continue
-        p = utility_summary(store.readings(peer["householdId"]), utility, summary["endDate"])
+        key = peer["householdId"]
+        if key not in cache:
+            cache[key] = store.readings(key)
+        p = utility_summary(cache[key], utility, summary["endDate"])
         if p.get("status") not in ("no_data", "insufficient_comparable_data") and p["source"] == summary["source"]:
             values.append(p["recentDailyAverage"])
     if len(values) < 5:
@@ -87,9 +92,10 @@ def household_report(store, ident):
     p = store.get_profile(ident)
     rows = store.readings(ident)
     summaries = []
+    peers = {}
     for utility in UNITS:
         s = utility_summary(rows, utility)
-        s["peerComparison"] = peer_comparison(store, p, utility, s)
+        s["peerComparison"] = peer_comparison(store, p, utility, s, peers)
         summaries.append(s)
     return {"householdId": ident, "storage": store.backend, "utilities": summaries,
         "limitations": ["Daily imports are not live smart-meter telemetry.",

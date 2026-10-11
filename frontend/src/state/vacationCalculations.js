@@ -53,9 +53,10 @@ export function calculateVacation(profile = {}, rawPlan = defaultVacationPlan(),
   const avoidedKwh = Math.max(0, baselineKwh - projectedKwh);
   const capacity = clamp(profile.batteryCapacityKwh ?? 13.5, 0, 1000);
   const startingSoc = clamp(profile.startingSocPct ?? 55, 0, 100);
-  const protectedReservePct = Math.max(clamp(profile.backupReservePct ?? 30, 0, 100), plan.reservePct);
+  const goalReserve=capacity?clamp((profile.backupGoalHours??8)*plan.criticalLoadKw/.9/capacity*100,0,100):100;
+  const protectedReservePct = Math.max(clamp(profile.backupReservePct ?? 30, 0, 100), plan.reservePct,goalReserve);
   const protectedEnergyKwh = capacity * Math.min(startingSoc, protectedReservePct) / 100;
-  const backupHours = protectedEnergyKwh / plan.criticalLoadKw;
+  const backupHours = plan.criticalLoadKw<=(profile.maxBatteryPowerKw??5)?protectedEnergyKwh*.9/plan.criticalLoadKw:0;
   return {
     status: vacationStatus(plan, today), days,
     baselineDailyKwh, awayDailyKwh, baselineKwh, projectedKwh, avoidedKwh,

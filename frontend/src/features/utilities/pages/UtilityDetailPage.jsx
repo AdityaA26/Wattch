@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useSection} from '../../../app/navigation.js';
 import {utilityById} from '../../../data/utilityData.js';
 import {PageHead, DemoBadge, ItemOverview, TrendPanel, BillBreakdown, ActionLink, SectionTitle, ServiceTile} from '../components/UtilityUI.jsx';
 import ElectricityPage from './ElectricityPage.jsx';
@@ -14,20 +14,20 @@ const detailSections={electricity:ElectricityPage,water:WaterPage,gas:GasPage,in
 export default function UtilityDetailPage({utilityId,onNavigate,paidBills={},onDemoPay=()=>{}}) {
   const profile=useHouseholdProfile();
   const item=getProfiledUtility(profile,utilityId);
-  const [metric,setMetric]=useState('usage');
+  const [section]=useSection(utilityId,['usage','costs','peak','battery','breaker','solar'],'usage');
+  const equipmentOnly=utilityId==='electricity'&&['battery','breaker','solar'].includes(section);
   if (!item) return <main className="u2-page"><p>Utility not found.</p></main>;
   const Feature=detailSections[item.id];
   return <main className="u2-page">
     <PageHead crumb={`UTILITIES / ${item.label.toUpperCase()}`} title={item.label} subtitle={item.summary} action={<ActionLink onClick={()=>onNavigate('utilities')}>All utilities</ActionLink>}/>
-    <DemoBadge/>
-    <ItemOverview item={item}/>
-    <div className="u2-section-gap"><SectionTitle title={`${item.label} overview`} detail="Explore your service, billing, and planning tools"/></div>
-    <div className="u2-two-col"><TrendPanel item={item} metric={metric} setMetric={setMetric}/><BillBreakdown item={item}/></div>
-    <div className="u2-section-gap"><SectionTitle title="Plan ahead" detail="Try the interactive scenarios below; these do not affect any real account"/></div>
+    {!equipmentOnly&&<ItemOverview item={item}/>}
+    <div className="u2-section-gap"><SectionTitle title={`${item.label} overview`}/></div>
+    {item.id!=='electricity'&&<BillBreakdown item={item}/>}
+
     <Feature item={item} onNavigate={onNavigate}/>
-    <UsageHistoryPanel key={`${item.id}-${profile.homeName}`} item={item}/>
+    {!equipmentOnly&&<UsageHistoryPanel key={`${item.id}-${profile.homeName}`} item={item} onNavigate={onNavigate}/>}
     {item.id==='waste'&&<WasteReminders/>}
-    <div className="u2-section-gap"><DemoPayment item={item} paid={Boolean(paidBills[item.id])} onPay={onDemoPay}/></div>
+    {!equipmentOnly&&<div className="u2-section-gap"><DemoPayment item={item} paid={Boolean(paidBills[item.id])} onPay={onDemoPay}/></div>}
     <div className="u2-section-gap"><ServiceTile item={item}/></div>
   </main>;
 }

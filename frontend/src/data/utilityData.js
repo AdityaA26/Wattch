@@ -11,6 +11,6 @@ export const UTILITIES = [
 export const utilityById = id => UTILITIES.find(u => u.id === id);
 export const utilityTotal = () => UTILITIES.reduce((s,u)=>s+u.monthly,0);
 export const monthlyTotals = () => MONTHS.map((_,i)=>Number(UTILITIES.reduce((sum,u)=>sum+u.trend[i],0).toFixed(2)));
-export const money = value => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(value);
-export const number = value => new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(value);
+export const money = value => value==null||!Number.isFinite(Number(value))?'Unavailable':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Math.abs(Number(value))<.005?0:Number(value));
+export const number = value => value==null||!Number.isFinite(Number(value))?'Unavailable':new Intl.NumberFormat('en-US',{maximumFractionDigits:1}).format(value);
 export const percent = (part,total) => total>0 ? Math.round(part/total*100) : 0;

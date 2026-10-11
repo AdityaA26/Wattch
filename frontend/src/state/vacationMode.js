@@ -1,7 +1,7 @@
 /** One browser-local vacation plan per Wattch household, shared reactively across pages. */
 import { useSyncExternalStore } from 'react';
-import { getHouseholds, useHouseholds } from './householdProfile.js';
-import { defaultVacationPlan, normalizeVacationPlan, localDateISO, vacationStatus, calculateVacation } from './vacationCalculations.js';
+import { getHouseholds, useHouseholds, getProfiledUtility } from './householdProfile.js';
+import { defaultVacationPlan, normalizeVacationPlan, localDateISO, vacationStatus, calculateVacation as calculateRawVacation } from './vacationCalculations.js';
 
 export const VACATION_KEY = 'wattch-vacation-plans-v1';
 const listeners = new Set();
@@ -22,12 +22,14 @@ function publish(next) {
   }
   plans = next;
   listeners.forEach(listener => listener());
+  if(typeof window!=='undefined')window.dispatchEvent(new Event('wattch-vacation-change'));
 }
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', event => {
     if (event.key === VACATION_KEY || event.key === null) {
       plans = initialPlans();
       listeners.forEach(listener => listener());
+      window.dispatchEvent(new Event('wattch-vacation-change'));
     }
   });
 }
@@ -56,4 +58,8 @@ export function toggleVacationMode(enabled, homeId = getHouseholds().activeHomeI
   }
   return saveVacationPlan({...plan,enabled},homeId);
 }
-export {calculateVacation, vacationStatus};
+export function calculateVacation(profile,plan,today){
+ const utility=getProfiledUtility(profile,'electricity');
+ return calculateRawVacation({...profile,monthlyElectricKwh:utility?.usage??profile.monthlyElectricKwh},{...plan,criticalLoadKw:profile.essentialLoadKw??.55},today);
+}
+export {vacationStatus};

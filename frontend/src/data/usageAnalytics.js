@@ -17,6 +17,18 @@ export function historicalMonth(item, year, month, metric='usage') {
   return Number(Math.max(0,baseline*season*annual*(1+variance)).toFixed(2));
 }
 export function usageSeries(item, period='month', year=2026, metric='usage') {
+  if(Array.isArray(item.readings)){
+    const rows=item.readings.filter(r=>r.date.startsWith(String(year)+'-'));
+    const quantity=r=>metric==='cost'?(r.unitRateUsd==null?null:r.quantity*r.unitRateUsd):r.quantity;
+    if(!rows.length)return {labels:[],values:[]};
+    if(period==='year')return {labels:MONTH_NAMES,values:MONTH_NAMES.map((_,i)=>{const bucket=rows.filter(r=>Number(r.date.slice(5,7))===i+1);return bucket.length&&bucket.every(r=>quantity(r)!=null)?sum(bucket.map(quantity)):null})};
+    if(period==='halfHour')return {labels:[],values:[]};
+    const end=rows.map(r=>r.date).sort().at(-1),last=new Date(end+'T12:00:00Z');
+    const count=period==='day'?1:period==='week'?7:30,byDate=new Map(rows.map(r=>[r.date,r]));
+    const dates=Array.from({length:count},(_,i)=>{const d=new Date(last);d.setUTCDate(d.getUTCDate()-(count-1-i));return d.toISOString().slice(0,10)});
+    return {labels:dates.map(d=>d.slice(5)),values:dates.map(d=>byDate.has(d)?quantity(byDate.get(d)):null)};
+  }
+
   if(!PERIODS.includes(period)) throw Error('Unsupported usage period');
   if(!YEARS.includes(Number(year))) throw Error('Unsupported sample year');
   const y=Number(year);
@@ -38,6 +50,16 @@ export function compareYears(item,metric='usage') {
   return YEARS.map(year=>({year,total:Number(sum(usageSeries(item,'year',year,metric).values).toFixed(2))}));
 }
 export function billPrediction(item) {
+  if(Array.isArray(item.readings)){
+    const sorted=[...item.readings].sort((a,b)=>b.date.localeCompare(a.date));
+    const recent=sorted.slice(0,7),end=sorted[0]?.date;
+    const complete=recent.length===7&&recent.every((r,i)=>{const d=new Date(end+'T12:00:00Z');d.setUTCDate(d.getUTCDate()-i);return d.toISOString().slice(0,10)===r.date&&r.unitRateUsd!=null});
+    const fixed=item.billBreakdown.slice(1).reduce((n,row)=>n+(row[1]??0),0);
+    const projected=complete?sum(recent.map(r=>r.quantity*r.unitRateUsd))/7*30+fixed:null;
+    const current=item.monthly,previous=item.bills?.at(-2)?.totalCostUsd??null;
+    return {projected:projected==null?null:Number(projected.toFixed(2)),current,previous,changePct:current!=null&&previous>0?Number(((current/previous-1)*100).toFixed(1)):null,difference:current!=null&&previous!=null?current-previous:null,assumption:'Last 7 consecutive saved days repeated for 30 days, plus sample fixed fees; no seasonal adjustment'};
+  }
+
   const current = Math.max(0,Number(item.monthly)||0);
   const historical = (item.trend||[]).slice(-3).map(Number);
   const momentum = historical.length ? (sum(historical)/historical.length-current)*.55 : 0;
@@ -61,6 +83,15 @@ export function anomalyInsight(item, {waterLeak=false,gasAway=false}={}) {
   return {flag:false,percent:0,headline:'Usage comparison',message:'Connect utility readings for verified anomaly detection.'};
 }
 export function monthlyReportRows(items) {
+  if(items.some(item=>item.bills)){
+    const rows=[['period_start','period_end','utility','usage','unit','estimated_cost_usd','next_30_day_projection_usd','source','complete_window']];
+    for(const item of items){
+      if(item.bills)for(const bill of item.bills)rows.push([bill.startDate,bill.endDate,item.label,bill.quantity??'',item.unit,bill.totalCostUsd??'',billPrediction(item).projected??'',bill.source,bill.complete]);
+      else rows.push(['','',item.label,item.usage,item.unit,item.monthly,billPrediction(item).projected,'ILLUSTRATIVE_SERVICE_CHARGE',true]);
+    }
+    return rows;
+  }
+
   const header=['sample_year','sample_month','utility','usage','unit','estimated_cost_usd','next_month_projection_usd','data_source'];
   const rows=[header];
   for(const item of items)for(let m=4;m<10;m++)rows.push(['2026',MONTH_NAMES[m],item.label,historicalMonth(item,2026,m,'usage'),item.unit,
@@ -70,5 +101,5 @@ export function monthlyReportRows(items) {
 export function csvText(rows) {return rows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n')+'\r\n';}
 export function downloadReport(items) {
   const blob=new Blob([csvText(monthlyReportRows(items))],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='wattch-simulated-utility-report.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='wattch-household-utility-report.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }

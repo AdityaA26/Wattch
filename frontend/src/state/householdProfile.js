@@ -4,6 +4,7 @@
  */
 import {useSyncExternalStore} from 'react';
 import {UTILITIES} from '../data/utilityData.js';
+import {dashboardForHome} from './dashboardSnapshot.js';
 
 export const PROFILE_KEY = 'wattch-household-profile-v1';
 export const HOMES_KEY = 'wattch-homes-v2';
@@ -16,8 +17,9 @@ export const DEFAULT_PROFILE = Object.freeze({
   gasProvider:'Not connected',internetProvider:'Not connected',wasteProvider:'Not connected',
   batteryCapacityKwh:13.5,startingSocPct:55,backupReservePct:30,
   solarCapacityKw:5,maxBatteryPowerKw:5,
+  essentialLoadKw:.55,backupGoalHours:8,peerOptIn:false,
 });
-const limits={latitude:[-90,90],longitude:[-180,180],squareFeet:[200,20000],occupants:[1,25],monthlyBudgetUsd:[0,100000],monthlyElectricKwh:[0,20000],batteryCapacityKwh:[0.001,1000],startingSocPct:[0,100],backupReservePct:[0,100],solarCapacityKw:[0,1000],maxBatteryPowerKw:[0.1,500]};
+const limits={latitude:[-90,90],longitude:[-180,180],squareFeet:[200,20000],occupants:[1,20],monthlyBudgetUsd:[0,100000],monthlyElectricKwh:[0,20000],batteryCapacityKwh:[0.001,1000],startingSocPct:[0,100],backupReservePct:[0,100],solarCapacityKw:[0,1000],maxBatteryPowerKw:[0.1,500],essentialLoadKw:[.01,20],backupGoalHours:[0,72]};
 const strings=['homeName','city','state','zip','timezone','homeType','electricityProvider','waterProvider','gasProvider','internetProvider','wasteProvider'];
 const equipmentTypes=['battery','breaker','solar'];
 const typeLimits={battery:[0,1000],breaker:[1,200],solar:[0,1000]};
@@ -29,6 +31,8 @@ function cleanProfile(value){
   for(const [f,[low,high]] of Object.entries(limits)){
     const x=Number(value[f]); if(value[f]!==''&&value[f]!=null&&Number.isFinite(x))out[f]=Math.max(low,Math.min(high,x));
   }
+  out.peerOptIn=value.peerOptIn===true;
+  out.occupants=Math.round(out.occupants);
   return out;
 }
 function exampleEquipment(profile){return [
@@ -87,9 +91,9 @@ function persist(next){
 function onStorage(ev){if(ev.key===HOMES_KEY||ev.key===null){snapshot=readStore();activeProfile=snapshot.homes.find(h=>h.id===snapshot.activeHomeId).profile;emit();}}
 function subscribe(listener){
   listeners.add(listener);
-  if(typeof window!=='undefined')window.addEventListener('storage',onStorage);
-  return ()=>{listeners.delete(listener);if(typeof window!=='undefined')window.removeEventListener('storage',onStorage)};
+  return ()=>listeners.delete(listener);
 }
+if(typeof window!=='undefined')window.addEventListener('storage',onStorage);
 export const useHouseholdProfile=()=>useSyncExternalStore(subscribe,()=>activeProfile,()=>DEFAULT_PROFILE);
 export const getHouseholdProfile=()=>activeProfile;
 export const useHouseholds=()=>useSyncExternalStore(subscribe,()=>snapshot,()=>snapshot);
@@ -146,9 +150,22 @@ export function editEquipment(id,fields){
 export function removeEquipment(id){updateEquipmentList(list=>list.filter(item=>item.id!==id));}
 /** Dynamic demo utility bill estimates for whichever home is active. */
 export function getProfiledUtilities(profile=activeProfile){
+  const shared=profile===activeProfile?dashboardForHome(snapshot.activeHomeId):null;
   return UTILITIES.map((u)=>{
     const label=profile[`${u.id}Provider`];
     const provider=label&&label!=='Not connected'?`${label} · demo only`:u.provider;
+    const b=shared?.billing.find(x=>x.utility===u.id);
+    if(b){
+      const readingRows=shared.readings.filter(r=>r.utility===u.id);
+      const variable=b.variableCostUsd;
+      return {...u,provider,usage:b.quantity,monthly:b.totalCostUsd,
+        billBreakdown:[[u.billBreakdown[0][0],variable],['Illustrative fixed fees',b.fixedCostUsd]],
+        activity:b.bills.map(x=>x.quantity),trend:b.bills.map(x=>x.totalCostUsd),
+        months:b.bills.map(x=>x.endDate.slice(5)),bills:b.bills,readings:readingRows,
+        source:b.source,periodLabel:b.startDate?`${b.startDate} – ${b.endDate}`:'No imported history',daysAvailable:b.daysAvailable,
+        unitRateUsd:b.quantity>0&&variable!=null?variable/b.quantity:null,
+        insightReport:shared.report.utilities.find(x=>x.utility===u.id)};
+    }
     if(u.id!=='electricity')return {...u,provider};
     const rate=u.billBreakdown[0][1]/u.usage;
     const variable=+(rate*profile.monthlyElectricKwh).toFixed(2);
