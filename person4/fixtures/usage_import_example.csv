@@ -1,0 +1,4 @@
+date,utility,quantity,unit,unitRateUsd,source
+2026-10-01,electricity,24,kWh,0.18,simulated
+2026-10-01,water,145,gal,0.006,simulated
+2026-10-01,gas,1.2,therms,1.40,simulated

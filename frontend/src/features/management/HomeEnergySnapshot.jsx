@@ -1,0 +1,8 @@
+import {useHouseholdData,refreshEnergy} from '../../state/householdData.jsx';
+import {money,number} from '../../data/utilityData.js';
+export default function HomeEnergySnapshot({onNavigate}){
+ const shared=useHouseholdData(),energy=shared.energy,plan=energy?.plan;
+ if(!plan)return <section className="wp-plan-summary"><div><b>Household energy plan</b><p>{shared.energyStatus==='loading'?'Checking weather and building a reserve-aware schedule…':energy?.note||shared.energyError||'No supported battery plan is available.'}</p></div>{shared.energyStatus!=='loading'&&<button type="button" className="wi-button" onClick={()=>refreshEnergy()}>Retry plan</button>}</section>;
+ const m=plan.metrics;
+ return <section className="wp-plan-summary"><div className="wp-plan-summary-heading"><div><b>Household energy plan</b><p>{shared.energyStatus==='loading'?'Recalculating; showing the previous plan.':m.backupGoalFeasible?(m.reserveReadyAtStart?'Required backup reserve is ready.':'Charge needed before the backup reserve is ready.'):'The supplied backup goal is not feasible for this battery.'}</p></div><button type="button" className="wi-button" onClick={()=>onNavigate('energy/plan')}>Review plan →</button></div><div className="wp-home-energy-metrics"><div><span>Fixed demo charge</span><strong>{number(plan.config.initialSocPct)}%</strong></div><div><span>Protected essential backup</span><strong>{number(m.reservedBackupHours)} h</strong></div><div><span>24-hour net savings · modeled</span><strong>{money(m.savingsVsBaselineUsd)}</strong></div><div><span>Relief during event window</span><strong>{number(plan.gridImpact.eventEnergyAvoidedKwh)} kWh</strong></div></div></section>;
+}
