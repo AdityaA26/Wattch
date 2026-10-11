@@ -3,6 +3,7 @@ import json
 import urllib.error
 from .assistant import request_json, select_model
 from .settings import settings
+from .gemini_reliability import generate
 
 SYSTEM = """You are Wattch's household utility assistant. Use only supplied evidence.
 Python calculated quantities, costs, changes and battery estimates. Do not invent readings,
@@ -37,14 +38,14 @@ def household_explain(report, question):
         return dict(fallback, warning="Gemini key missing")
     try:
         model = select_model(cfg["GEMINI_API_KEY"], cfg["GEMINI_MODEL"])
-        response = request_json(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-            cfg["GEMINI_API_KEY"], {"systemInstruction": {"parts": [{"text": SYSTEM}]},
+        response, used_model = generate(request_json, cfg["GEMINI_API_KEY"], model,
+            {"systemInstruction": {"parts": [{"text": SYSTEM}]},
             "contents": [{"role": "user", "parts": [{"text": json.dumps({"evidence": report, "question": question})}]}],
             "generationConfig": {"temperature": .2, "maxOutputTokens": 1800}})
         parts = response.get("candidates", [{}])[0].get("content", {}).get("parts", [])
         answer = "\n".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
         if not answer:
             raise ValueError("Empty answer")
-        return {"provider": "gemini", "model": model, "householdId": report["householdId"], "answer": answer, "evidence": report}
+        return {"provider": "gemini", "model": used_model, "householdId": report["householdId"], "answer": answer, "evidence": report}
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ValueError, KeyError, IndexError):
         return dict(fallback, warning="Gemini unavailable: check model, key and quota; computed evidence is still available.")
