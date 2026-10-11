@@ -4,11 +4,13 @@ import {PageHead, DemoBadge, ItemOverview, TrendPanel, BillBreakdown, ActionLink
 import ElectricityPage from './ElectricityPage.jsx';
 import WaterPage from './WaterPage.jsx';
 import GasPage from './GasPage.jsx';
-import InternetPage from './InternetPage.jsx';
+import InternetServicePage from '../../management/InternetServicePage.jsx';
+import UsageHistoryPanel from '../../management/UsageHistoryPanel.jsx';
+import WasteReminders from '../../management/WasteReminders.jsx';
 import WastePage from './WastePage.jsx';
 import DemoPayment from '../components/DemoPayment.jsx';
 import {useHouseholdProfile,getProfiledUtility} from '../../../state/householdProfile.js';
-const detailSections={electricity:ElectricityPage,water:WaterPage,gas:GasPage,internet:InternetPage,waste:WastePage};
+const detailSections={electricity:ElectricityPage,water:WaterPage,gas:GasPage,internet:InternetServicePage,waste:WastePage};
 export default function UtilityDetailPage({utilityId,onNavigate,paidBills={},onDemoPay=()=>{}}) {
   const profile=useHouseholdProfile();
   const item=getProfiledUtility(profile,utilityId);
@@ -23,6 +25,8 @@ export default function UtilityDetailPage({utilityId,onNavigate,paidBills={},onD
     <div className="u2-two-col"><TrendPanel item={item} metric={metric} setMetric={setMetric}/><BillBreakdown item={item}/></div>
     <div className="u2-section-gap"><SectionTitle title="Plan ahead" detail="Try the interactive scenarios below; these do not affect any real account"/></div>
     <Feature item={item} onNavigate={onNavigate}/>
+    <UsageHistoryPanel key={`${item.id}-${profile.homeName}`} item={item}/>
+    {item.id==='waste'&&<WasteReminders/>}
     <div className="u2-section-gap"><DemoPayment item={item} paid={Boolean(paidBills[item.id])} onPay={onDemoPay}/></div>
     <div className="u2-section-gap"><ServiceTile item={item}/></div>
   </main>;

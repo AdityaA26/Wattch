@@ -6,6 +6,8 @@ import { HomePage, UtilityOverviewPage, UtilityDetailPage, ConnectUtilityPage } 
 import HouseholdProfilePage from '../features/profile/HouseholdProfilePage.jsx';
 import {useHouseholdProfile,useHouseholds,selectHousehold,addHousehold} from '../state/householdProfile.js';
 import EquipmentPage from '../features/profile/EquipmentPage.jsx';
+import AccountPage from '../features/management/AccountPage.jsx';
+import {useHouseholdAccess} from '../state/householdAccess.js';
 import VacationPage, { VacationSummaryStrip } from '../features/vacation/VacationPage.jsx';
 import { useVacationMode, toggleVacationMode, calculateVacation } from '../state/vacationMode.js';
 
@@ -19,7 +21,7 @@ const MAIN_PAGES = [
   { id: 'equipment', label: 'My equipment', icon: 'bolt' },
 ];
 const UTILITY_PAGES = UTILITIES;
-const ALL_IDS = new Set([...MAIN_PAGES, ...UTILITY_PAGES, { id: 'connect' }, { id: 'settings' }, { id: 'vacation' }].map((p) => p.id));
+const ALL_IDS = new Set([...MAIN_PAGES, ...UTILITY_PAGES, { id: 'connect' }, { id: 'settings' }, { id: 'vacation' }, { id: 'account' }].map((p) => p.id));
 function pageFromHash() {
   const id = decodeURIComponent(window.location.hash.slice(2));
   return id === 'weather' ? 'energy' : ALL_IDS.has(id) ? id : 'home';
@@ -70,6 +72,8 @@ function FuturePage({ page, onNavigate }) {
 export default function WattchApp() {
   const profile = useHouseholdProfile();
   const households=useHouseholds();
+  const householdAccess=useHouseholdAccess();
+  const [accountOpen,setAccountOpen]=useState(false);
   const [propertyOpen,setPropertyOpen]=useState(false);
   const [propertyMessage,setPropertyMessage]=useState('');
   const [active, setActive] = useState(pageFromHash);
@@ -94,8 +98,8 @@ export default function WattchApp() {
   const [search, setSearch] = useState('');
   const vacation = useVacationMode();
   const vacationEstimate = calculateVacation(profile, vacation.plan);
-  const navigate = (id) => { if (id === 'weather') id = 'energy'; if (!ALL_IDS.has(id)) return; window.location.hash = `/${id}`; setActive(id); setMobileOpen(false); setSearchOpen(false); setPropertyOpen(false); setSearch(''); window.scrollTo({top:0,behavior:'auto'}); };
-  const pageOptions = [...MAIN_PAGES,...UTILITY_PAGES,{id:'connect',label:'Connect utility',icon:'plus'},{id:'settings',label:'Settings',icon:'settings'},{id:'vacation',label:'Vacation Mode',icon:'leaf'}];
+  const navigate = (id) => { if (id === 'weather') id = 'energy'; if (!ALL_IDS.has(id)) return; window.location.hash = `/${id}`; setActive(id); setMobileOpen(false); setSearchOpen(false); setPropertyOpen(false); setAccountOpen(false); setSearch(''); window.scrollTo({top:0,behavior:'auto'}); };
+  const pageOptions = [...MAIN_PAGES,...UTILITY_PAGES,{id:'connect',label:'Connect utility',icon:'plus'},{id:'settings',label:'Settings',icon:'settings'},{id:'vacation',label:'Vacation Mode',icon:'leaf'},{id:'account',label:'Account & Members',icon:'home'}];
   const searchItems = pageOptions.filter((item) => item.label.toLowerCase().includes(search.trim().toLowerCase()));
   return <div className="wapp-root">
     {mobileOpen && <button type="button" className="wapp-scrim" onClick={() => setMobileOpen(false)} aria-label="Close navigation"/>}
@@ -129,13 +133,14 @@ export default function WattchApp() {
     <div className="wapp-workspace">
       <header className="wapp-topbar">
         <div className="wapp-topbar-left"><button type="button" className="wapp-mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Icon name="menu" size={20}/></button><span className="wapp-weather-mini"><Icon name="sun" size={16}/> {profile.city}, {profile.state} <span className="wapp-separator">·</span> Energy planning</span></div>
+        <div className="wapp-topbar-center"><span className="wapp-topbar-wordmark">WATTCH</span><button type="button" className="wapp-search-pill" onClick={()=>{setSearchOpen(v=>!v);setSearch('')}} aria-label="Search Wattch" aria-expanded={searchOpen}><Icon name="search" size={16}/> <span>Search your home...</span></button></div>
         <div className="wapp-topbar-right">
           {searchOpen && <div className="wapp-search-popover"><input aria-label="Search Wattch pages" value={search} onChange={e=>setSearch(e.target.value)} autoFocus placeholder="Find a page..."/><div className="wapp-search-results">{searchItems.length ? searchItems.map(item=><button type="button" key={item.id} onClick={()=>navigate(item.id)}><Icon name={item.icon} size={15}/>{item.label}</button>) : <p>No matching pages</p>}</div></div>}
-          <button type="button" className="wapp-top-icon" aria-label="Search pages" aria-expanded={searchOpen} onClick={() => {setSearchOpen(x=>!x);setSearch('')}}><Icon name="search" size={17}/></button>
-          <div className="wapp-profile"><span className="wapp-avatar">{profile.homeName.slice(0,2).toUpperCase()}</span><span><strong>{profile.homeName}</strong><small>Demo household</small></span></div>
+          <button type="button" className="wapp-profile wapp-profile-button" onClick={()=>{setAccountOpen(v=>!v);setPropertyOpen(false)}} aria-expanded={accountOpen} aria-label="Account and household members"><span className="wapp-avatar">{householdAccess.owner.name.trim().split(/\s+/).map(part=>part[0]).slice(0,2).join('').toUpperCase()}</span><span><strong>{householdAccess.owner.name}</strong><small>Demo account · {profile.homeName}</small></span><Icon name="chevron" size={14}/></button>
+          {accountOpen&&<div className="wapp-account-menu" role="group" aria-label="Account navigation"><small>ACCOUNT · DEMO ONLY</small><button type="button" onClick={()=>navigate('account')}>My account & members</button><button type="button" onClick={()=>navigate('account')}>Homes / buildings</button><button type="button" onClick={()=>navigate('equipment')}>Equipment for this home</button><button type="button" onClick={()=>navigate('settings')}>Settings</button></div>}
         </div>
       </header>
-      <div className="wapp-view" id="wattch-main">{active !== 'vacation' && <VacationSummaryStrip onNavigate={navigate}/>} {active === 'vacation' ? <VacationPage key={households.activeHomeId} onNavigate={navigate}/> : active === 'energy' ? <EnergyOptimizationPage key={households.activeHomeId} onNavigate={navigate}/> : active === 'home' ? <HomePage key={households.activeHomeId} onNavigate={navigate} paidBills={paidBills}/> : active === 'utilities' ? <UtilityOverviewPage key={households.activeHomeId} onNavigate={navigate}/> : UTILITY_PAGES.some(item=>item.id===active) ? <UtilityDetailPage key={`${households.activeHomeId}-${active}`} utilityId={active} onNavigate={navigate} paidBills={paidBills} onDemoPay={onDemoPay}/> : active === 'connect' ? <ConnectUtilityPage onNavigate={navigate}/> : active === 'settings' ? <HouseholdProfilePage onNavigate={navigate}/> : active === 'equipment' ? <EquipmentPage onNavigate={navigate}/> : <FuturePage page={active} onNavigate={navigate}/>}</div>
+      <div className="wapp-view" id="wattch-main">{active !== 'vacation' && <VacationSummaryStrip onNavigate={navigate}/>} {active === 'account' ? <AccountPage onNavigate={navigate}/> : active === 'vacation' ? <VacationPage key={households.activeHomeId} onNavigate={navigate}/> : active === 'energy' ? <EnergyOptimizationPage key={households.activeHomeId} onNavigate={navigate}/> : active === 'home' ? <HomePage key={households.activeHomeId} onNavigate={navigate} paidBills={paidBills}/> : active === 'utilities' ? <UtilityOverviewPage key={households.activeHomeId} onNavigate={navigate}/> : UTILITY_PAGES.some(item=>item.id===active) ? <UtilityDetailPage key={`${households.activeHomeId}-${active}`} utilityId={active} onNavigate={navigate} paidBills={paidBills} onDemoPay={onDemoPay}/> : active === 'connect' ? <ConnectUtilityPage onNavigate={navigate}/> : active === 'settings' ? <HouseholdProfilePage onNavigate={navigate}/> : active === 'equipment' ? <EquipmentPage onNavigate={navigate}/> : <FuturePage page={active} onNavigate={navigate}/>}</div>
     </div>
   </div>;
 }
