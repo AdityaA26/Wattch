@@ -6,7 +6,7 @@ A household utility and energy-planning MVP built by a four-person team during t
 
 [Devpost submission](https://devpost.com/software/wattch-3tw1fh) · [Demo video](https://www.youtube.com/watch?v=fTl4sWiMcjc) · [Hardware simulation](https://wokwi.com/projects/477573151899236353)
 
-![Verification](https://github.com/AdityaA26/Wattch/actions/workflows/ci.yml/badge.svg)
+[Automated verification workflow](.github/workflows/ci.yml)
 
 ## What it does
 
