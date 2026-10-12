@@ -38,7 +38,7 @@ Screenshots use the app's labeled sample household data.
 | --- | --- |
 | [Aditya Anandkumar](https://github.com/AdityaA26) | Battery autopilot and grid-event logic, shared scenarios, ESP32 smart-breaker prototype and hardware design |
 | [Nihal Katta](https://github.com/NihalK321) | Forecast/resilience backend, React household and utility dashboards, vacation/account/equipment features and final demo snapshot integration |
-| [Neeshan Syed](https://github.com/SYED-NEESHAN) | Initial Streamlit utility dashboard and early cost, insight and storm-reserve presentation |
+| [Neeshan Syed](https://github.com/SYED-NEESHAN) | Frontend/backend feature planning and requirements, initial Streamlit utility dashboard and early insights presentation, and Devpost hackathon submission preparation |
 | [Kartikeya Pendem](https://github.com/kartikeya1107) | Household-analysis backend, TigerData/Gemini integration, savings/grid calculations, shared data integration and final frontend/backend polish |
 
 The team collaborated on integration, debugging, testing and presentation. See [CONTRIBUTORS.md](CONTRIBUTORS.md) for evidence and the preserved development histories.
